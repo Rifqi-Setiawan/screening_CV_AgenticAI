@@ -6,11 +6,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.worker.anchor import (
-    extract_email_name_tokens,
-    extract_filename_anchor,
     is_blacklisted_as_name,
     resolve_candidate_name_consensus,
 )
@@ -116,7 +112,10 @@ def test_cv_classifier_rejects_pure_portfolio_without_profile():
 
 def test_smart_boundary_isolator_separates_attachments():
     pages = [
-        {"text": "John Doe\nEmail: john@mail.com\nPengalaman Kerja:\nSoftware Engineer (2022 - 2024)\nPendidikan:\nS1 IT", "image_count": 0},
+        {
+            "text": "John Doe\nEmail: john@mail.com\nPengalaman Kerja:\nSoftware Engineer (2022 - 2024)\nPendidikan:\nS1 IT",
+            "image_count": 0,
+        },
         {"text": "Pengalaman Organisasi:\nKetua Himpunan Mahasiswa\nKeahlian:\nPython, SQL, Linux", "image_count": 0},
         {"text": "LAMPIRAN PORTOFOLIO PROYEK\nScreenshots aplikasi mobile dan arsitektur backend", "image_count": 2},
         {"text": "", "image_count": 1},
