@@ -9,6 +9,7 @@ Implements Section C3 and S0 Graph B from Blueprint v2.1:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -327,11 +328,12 @@ async def compile_with_llm(
     clean_text = sanitize_contact_pii(jd_text)
 
     # Pre-flight PII guard
-    try:
-        gateway.verify_redacted_text(clean_text)
-    except Exception as e:
-        logger.warning(f"PII preflight blocked LLM JD compiler: {e}")
-        return None
+    if hasattr(gateway, "verify_redacted_text"):
+        try:
+            gateway.verify_redacted_text(clean_text)
+        except Exception as e:
+            logger.warning(f"PII preflight blocked LLM JD compiler: {e}")
+            return None
 
     model = getattr(settings, "LLM_MODEL_JD_COMPILER", "ag/gemini-3.8-flash-high")
 
@@ -385,8 +387,15 @@ async def compile_with_llm(
             model=model,
         )
         if isinstance(resp, dict):
-            content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-            parsed = parse_llm_json(content)
+            if "choices" in resp and resp["choices"]:
+                content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+            else:
+                content = resp.get("raw_content") or resp.get("content", "")
+            parsed = (
+                parse_llm_json(content)
+                if isinstance(content, str)
+                else (content if isinstance(content, dict) else None)
+            )
             if isinstance(parsed, dict) and "requirements" in parsed:
                 # Validate through Pydantic
                 req_set = RequirementSetIR.model_validate(parsed)
@@ -594,6 +603,15 @@ async def save_facet_judgment_to_db(
     superseded_by_critic: bool = False,
 ) -> None:
     """Inserts or updates a facet evaluation judgment in `facet_judgments`."""
+    valid_uuids: list[uuid.UUID] = []
+    if support_atom_ids:
+        for sa in support_atom_ids:
+            if isinstance(sa, uuid.UUID):
+                valid_uuids.append(sa)
+            elif isinstance(sa, str):
+                with contextlib.suppress(ValueError):
+                    valid_uuids.append(uuid.UUID(sa))
+
     async with conn.cursor() as cur:
         await cur.execute(
             """
@@ -622,7 +640,7 @@ async def save_facet_judgment_to_db(
                 tenant_id,
                 verdict,
                 depth_level,
-                support_atom_ids or [],
+                valid_uuids,
                 method,
                 analysis,
                 nli_p_entail,

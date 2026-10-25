@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -201,6 +202,7 @@ class RequirementSetIR(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    requirement_set_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     job_title: str = ""
     requirements: list[RequirementIR] = Field(default_factory=list)
     category_weights: dict[str, float] = Field(default_factory=dict)

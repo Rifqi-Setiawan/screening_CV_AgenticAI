@@ -10,21 +10,39 @@ from dataclasses import dataclass, field
 from typing import Any
 
 CERTIFICATE_PATTERNS = [
-    re.compile(r"\b(?:sertifikat|certificate(?:\s+of)?|piagam|diberikan\s+kepada|awarded\s+to|has\s+completed|telah\s+menyelesaikan|ijazah|transkrip\s+nilai|surat\s+tanda\s+lulus)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:sertifikat|certificate(?:\s+of)?|piagam|diberikan\s+kepada|awarded\s+to|has\s+completed|telah\s+menyelesaikan|ijazah|transkrip\s+nilai|surat\s+tanda\s+lulus)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 COVER_LETTER_PATTERNS = [
-    re.compile(r"\b(?:surat\s+lamaran(?:\s+pekerjaan)?|cover\s+letter|application\s+letter|kepada\s+yth|dengan\s+hormat|hal\s*:\s*lamaran|sehubungan\s+dengan\s+informasi\s+lowongan|bersama\s+surat\s+ini\s+saya)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:surat\s+lamaran(?:\s+pekerjaan)?|cover\s+letter|application\s+letter|kepada\s+yth|dengan\s+hormat|hal\s*:\s*lamaran|sehubungan\s+dengan\s+informasi\s+lowongan|bersama\s+surat\s+ini\s+saya)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 ADMIN_DOC_PATTERNS = [
-    re.compile(r"\b(?:kartu\s+tanda\s+penduduk|kartu\s+keluarga|surat\s+keterangan\s+catatan\s+kepolisian|skck|paspor|surat\s+izin\s+mengemudi|nomor\s+induk\s+kependudukan|nik\s*:\s*\d{12,16})\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:kartu\s+tanda\s+penduduk|kartu\s+keluarga|surat\s+keterangan\s+catatan\s+kepolisian|skck|paspor|surat\s+izin\s+mengemudi|nomor\s+induk\s+kependudukan|nik\s*:\s*\d{12,16})\b",
+        re.IGNORECASE,
+    ),
 ]
 
 CV_SECTIONS_PATTERNS = [
-    re.compile(r"\b(?:pengalaman(?:\s+kerja)?|work\s+experience|professional\s+experience|employment\s+history|riwayat\s+pekerjaan|pengalaman\s+profesional)\b", re.IGNORECASE),
-    re.compile(r"\b(?:pendidikan|education|educational\s+background|riwayat\s+pendidikan|academic\s+history|latar\s+belakang\s+pendidikan)\b", re.IGNORECASE),
-    re.compile(r"\b(?:keahlian|skills|kemampuan|technical\s+skills|kompetensi|core\s+competencies|tools\s+&\s+technologies)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:pengalaman(?:\s+kerja)?|work\s+experience|professional\s+experience|employment\s+history|riwayat\s+pekerjaan|pengalaman\s+profesional)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:pendidikan|education|educational\s+background|riwayat\s+pendidikan|academic\s+history|latar\s+belakang\s+pendidikan)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:keahlian|skills|kemampuan|technical\s+skills|kompetensi|core\s+competencies|tools\s+&\s+technologies)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
@@ -94,7 +112,9 @@ def classify_document_is_cv(full_text: str, page_count: int = 1, total_images: i
             is_cv=False,
             doc_type="CERTIFICATE_ONLY",
             confidence=0.95,
-            reasons=["Dokumen teridentifikasi sebagai berkas sertifikat / ijazah / transkrip nilai akademik tanpa ringkasan CV dan riwayat kerja."],
+            reasons=[
+                "Dokumen teridentifikasi sebagai berkas sertifikat / ijazah / transkrip nilai akademik tanpa ringkasan CV dan riwayat kerja."
+            ],
             flags=["NOT_A_CV", "CERTIFICATE_OR_ACADEMIC_ONLY"],
             extracted_contact=contact_data,
         )
@@ -119,7 +139,9 @@ def classify_document_is_cv(full_text: str, page_count: int = 1, total_images: i
                 is_cv=False,
                 doc_type="PURE_PORTFOLIO",
                 confidence=0.90,
-                reasons=["Dokumen terdiri dari banyak halaman gambar/portofolio visual tanpa teks profil atau riwayat pekerjaan."],
+                reasons=[
+                    "Dokumen terdiri dari banyak halaman gambar/portofolio visual tanpa teks profil atau riwayat pekerjaan."
+                ],
                 flags=["NOT_A_CV", "PURE_PORTFOLIO"],
                 extracted_contact=contact_data,
             )

@@ -360,11 +360,28 @@ def rank_v2(items: list[dict[str, Any]], run_id: str = "eval") -> list[dict[str,
     3. Strong count descending (-strong_count)
     4. Deterministic SHA-256 tie-breaker key
     """
+
+    def _extract_band(x: dict[str, Any]) -> str:
+        res = x.get("result")
+        if res is not None:
+            b = getattr(res, "band", None) or (res.get("band") if isinstance(res, dict) else None)
+            if b:
+                return str(b)
+        return str(x.get("band", "R"))
+
+    def _extract_score(x: dict[str, Any]) -> float:
+        res = x.get("result")
+        if res is not None:
+            s = getattr(res, "final_score", None) or (res.get("final_score") if isinstance(res, dict) else None)
+            if s is not None:
+                return float(s)
+        return float(x.get("final_score", 0.0))
+
     return sorted(
         items,
         key=lambda x: (
-            BAND_ORDER.get(x["result"].band, 99),
-            -x["result"].final_score,
+            BAND_ORDER.get(_extract_band(x), 99),
+            -_extract_score(x),
             -x.get("strong_count", 0),
             tie_break_key(str(x.get("candidate_id") or x.get("cv_id") or ""), run_id),
         ),

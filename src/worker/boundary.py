@@ -10,16 +10,36 @@ from dataclasses import dataclass, field
 from typing import Any
 
 ATTACHMENT_INDICATORS = [
-    re.compile(r"^\s*(?:lampiran|attachment|kumpulan\s+karya|project\s+showcase|galeri\s+proyek|screens(?:hots)?|desain\s+arsitektur|denah|gambar\s+kerja)\b", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*(?:transkrip\s+nilai|daftar\s+nilai|academic\s+transcript|kartu\s+hasil\s+studi|khs)\b", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*(?:surat\s+keterangan\s+lulus|skl|ijazah|diploma|certificate\s+of\s+completion|piagam\s+penghargaan)\b", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*(?:surat\s+keterangan\s+catatan\s+kepolisian|skck|kartu\s+tanda\s+penduduk|ktp|kartu\s+keluarga)\b", re.IGNORECASE | re.MULTILINE),
+    re.compile(
+        r"^\s*(?:lampiran|attachment|kumpulan\s+karya|project\s+showcase|galeri\s+proyek|screens(?:hots)?|desain\s+arsitektur|denah|gambar\s+kerja)\b",
+        re.IGNORECASE | re.MULTILINE,
+    ),
+    re.compile(
+        r"^\s*(?:transkrip\s+nilai|daftar\s+nilai|academic\s+transcript|kartu\s+hasil\s+studi|khs)\b",
+        re.IGNORECASE | re.MULTILINE,
+    ),
+    re.compile(
+        r"^\s*(?:surat\s+keterangan\s+lulus|skl|ijazah|diploma|certificate\s+of\s+completion|piagam\s+penghargaan)\b",
+        re.IGNORECASE | re.MULTILINE,
+    ),
+    re.compile(
+        r"^\s*(?:surat\s+keterangan\s+catatan\s+kepolisian|skck|kartu\s+tanda\s+penduduk|ktp|kartu\s+keluarga)\b",
+        re.IGNORECASE | re.MULTILINE,
+    ),
 ]
 
 CV_CORE_INDICATORS = [
-    re.compile(r"\b(?:pengalaman(?:\s+kerja)?|work\s+experience|professional\s+experience|employment\s+history|riwayat\s+pekerjaan|pengalaman\s+organisasi)\b", re.IGNORECASE),
-    re.compile(r"\b(?:pendidikan|education|educational\s+background|riwayat\s+pendidikan|academic\s+history)\b", re.IGNORECASE),
-    re.compile(r"\b(?:keahlian|skills|technical\s+skills|kemampuan|kompetensi|ringkasan\s+profesional|professional\s+summary)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:pengalaman(?:\s+kerja)?|work\s+experience|professional\s+experience|employment\s+history|riwayat\s+pekerjaan|pengalaman\s+organisasi)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:pendidikan|education|educational\s+background|riwayat\s+pendidikan|academic\s+history)\b", re.IGNORECASE
+    ),
+    re.compile(
+        r"\b(?:keahlian|skills|technical\s+skills|kemampuan|kompetensi|ringkasan\s+profesional|professional\s+summary)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 
@@ -62,7 +82,11 @@ def isolate_document_boundaries(pages: list[dict[str, Any]]) -> BoundaryResult:
 
         if is_attachment_title:
             has_entered_attachments = True
-            page_type = "PORTFOLIO_PROJECT" if "proyek" in text.lower() or "portfolio" in text.lower() else "ATTACHMENT_ACADEMIC"
+            page_type = (
+                "PORTFOLIO_PROJECT"
+                if "proyek" in text.lower() or "portfolio" in text.lower()
+                else "ATTACHMENT_ACADEMIC"
+            )
         elif has_entered_attachments:
             # If we already passed an attachment header and there are no strong CV Core headings, treat as attachment
             if not has_cv_core or word_count < 100:

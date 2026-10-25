@@ -10,18 +10,30 @@ from pathlib import Path
 
 # Blacklist of job titles, roles, and professional headlines
 ROLE_HEADLINE_PATTERNS = [
-    re.compile(r"\b(?:software\s+engineer|full\s*stack|backend|frontend|web\s+developer|mobile\s+developer|devops|data\s+scientist|data\s+analyst|data\s+engineer|business\s+analyst|digital\s+marketing|marketing\s+specialist|civil\s+engineer|drafter|site\s+engineer|project\s+manager|product\s+manager|graphic\s+designer|ui/ux|content\s+creator|social\s+media|finance\s+staff|accounting|supervisor|technician|intern(?:ship)?|fresh\s+graduate)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:software\s+engineer|full\s*stack|backend|frontend|web\s+developer|mobile\s+developer|devops|data\s+scientist|data\s+analyst|data\s+engineer|business\s+analyst|digital\s+marketing|marketing\s+specialist|civil\s+engineer|drafter|site\s+engineer|project\s+manager|product\s+manager|graphic\s+designer|ui/ux|content\s+creator|social\s+media|finance\s+staff|accounting|supervisor|technician|intern(?:ship)?|fresh\s+graduate)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Blacklist of academic institutions and organizations
 INSTITUTION_PATTERNS = [
-    re.compile(r"\b(?:universitas|university|univ|stmik|institut|institute|politeknik|polytechnic|sekolah\s+tinggi|fakultas|faculty|departemen|department|jurusan|program\s+studi|prodi|yayasan|foundation|sma|smk|smp|kemdikbud|dinas|kementerian)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:universitas|university|univ|stmik|institut|institute|politeknik|polytechnic|sekolah\s+tinggi|fakultas|faculty|departemen|department|jurusan|program\s+studi|prodi|yayasan|foundation|sma|smk|smp|kemdikbud|dinas|kementerian)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Blacklist of section headers, formal greetings, and narrative phrases
 NOISE_HEADER_PATTERNS = [
-    re.compile(r"\b(?:tentang\s+saya|about\s+me|profile|profil|personal\s+background|curriculum\s+vitae|resume|biodata|hubungi|contact|phone|email|alamat|address|born\s+in|tempat(?:\s+dan)?\s+tanggal\s+lahir|ttl|ringkasan|summary|executive\s+summary|overview|objektif|objective)\b", re.IGNORECASE),
-    re.compile(r"\b(?:fresh\s+graduate|lulusan\s+baru|semangat\s+belajar|dengan\s+hormat|kepada\s+yth|dear\s+hiring|sehubungan\s+dengan|bersama\s+surat|surat\s+lamaran|hal\s*:)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:tentang\s+saya|about\s+me|profile|profil|personal\s+background|curriculum\s+vitae|resume|biodata|hubungi|contact|phone|email|alamat|address|born\s+in|tempat(?:\s+dan)?\s+tanggal\s+lahir|ttl|ringkasan|summary|executive\s+summary|overview|objektif|objective)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:fresh\s+graduate|lulusan\s+baru|semangat\s+belajar|dengan\s+hormat|kepada\s+yth|dear\s+hiring|sehubungan\s+dengan|bersama\s+surat|surat\s+lamaran|hal\s*:)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 
@@ -64,9 +76,30 @@ def extract_filename_anchor(filename: str) -> str | None:
 
     # 2. Pattern: Name-resume.pdf or CV_Name.pdf
     stop_words = {
-        "cv", "resume", "curriculum", "vitae", "pdf", "docx", "doc", "merged",
-        "final", "new", "update", "ats", "2024", "2025", "2026", "id", "en",
-        "lamaran", "surat", "pekerjaan", "page", "pages", "draft", "profile"
+        "cv",
+        "resume",
+        "curriculum",
+        "vitae",
+        "pdf",
+        "docx",
+        "doc",
+        "merged",
+        "final",
+        "new",
+        "update",
+        "ats",
+        "2024",
+        "2025",
+        "2026",
+        "id",
+        "en",
+        "lamaran",
+        "surat",
+        "pekerjaan",
+        "page",
+        "pages",
+        "draft",
+        "profile",
     }
     clean_stem = re.sub(r"[_\-\.]+", " ", stem)
     tokens = [t.strip() for t in clean_stem.split() if t.strip().lower() not in stop_words and not t.strip().isdigit()]
@@ -118,7 +151,9 @@ def resolve_candidate_name_consensus(
             fn_lower = fn_cand.lower()
             cand_lower = name_candidate.lower()
             cand_words = [w for w in cand_lower.split() if len(w) > 1]
-            if any(w in fn_lower for w in cand_words) or (len(fn_cand.split()) >= len(name_candidate.split()) and len(name_candidate.split()) <= 2):
+            if any(w in fn_lower for w in cand_words) or (
+                len(fn_cand.split()) >= len(name_candidate.split()) and len(name_candidate.split()) <= 2
+            ):
                 return fn_cand
 
         return name_candidate

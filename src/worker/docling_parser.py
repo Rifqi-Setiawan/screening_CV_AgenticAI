@@ -29,7 +29,9 @@ def get_docling_converter():
             pipeline_options.do_ocr = False
             pipeline_options.do_table_structure = True
 
-            logger.info("Initializing local self-hosted Docling DocumentConverter (CPU-optimized, OCR disabled for digital text)...")
+            logger.info(
+                "Initializing local self-hosted Docling DocumentConverter (CPU-optimized, OCR disabled for digital text)..."
+            )
             _docling_converter = DocumentConverter(
                 format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
             )
@@ -65,10 +67,12 @@ def parse_with_docling(content: bytes, filename: str) -> dict[str, Any] | None:
             line_str = line.strip()
             if line_str.startswith("#"):
                 if current_lines:
-                    sections.append({
-                        "heading": current_heading,
-                        "text": "\n".join(current_lines).strip(),
-                    })
+                    sections.append(
+                        {
+                            "heading": current_heading,
+                            "text": "\n".join(current_lines).strip(),
+                        }
+                    )
                     current_lines = []
                 current_heading = line_str.lstrip("#").strip()
             else:
@@ -76,10 +80,12 @@ def parse_with_docling(content: bytes, filename: str) -> dict[str, Any] | None:
                     current_lines.append(line_str)
 
         if current_lines:
-            sections.append({
-                "heading": current_heading,
-                "text": "\n".join(current_lines).strip(),
-            })
+            sections.append(
+                {
+                    "heading": current_heading,
+                    "text": "\n".join(current_lines).strip(),
+                }
+            )
 
         return {
             "status": "SUCCESS",

@@ -9,6 +9,7 @@ Implements Grounding by Construction:
 from __future__ import annotations
 
 import re
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -235,6 +236,7 @@ class EvidenceAtom:
     text_redacted: str
     visibility: str = "VISIBLE"
     bbox: list[float] | None = None
+    id: uuid.UUID | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {

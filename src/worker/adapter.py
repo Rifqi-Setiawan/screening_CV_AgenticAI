@@ -497,8 +497,7 @@ def sanitize_extracted_name(name: str | None, full_text: str, filename: str) -> 
             and 2 <= len(line_clean.split()) <= 4
             and not any(re.search(p, line_clean, re.IGNORECASE) for p in bad_pats)
             and not any(
-                w in line_clean
-                for w in ["EDUCATION", "SKILLS", "EXPERIENCE", "SUMMARY", "CURRICULUM", "VITAE"]
+                w in line_clean for w in ["EDUCATION", "SKILLS", "EXPERIENCE", "SUMMARY", "CURRICULUM", "VITAE"]
             )
         ):
             return line_clean.title()
@@ -553,7 +552,9 @@ def extract_candidate_profile(content: bytes, filename: str) -> dict[str, Any]:
     ach_text = "\n".join(sec_map.get("awards", []) + sec_map.get("achievements", []))
 
     # Docling Hybrid Fallback for messy/disordered layouts (Decision 3: Opsi A)
-    if (raw.get("meta", {}).get("confidence", 1.0) < 0.60 or not exp_text.strip()) and filename.lower().endswith(".pdf"):
+    if (raw.get("meta", {}).get("confidence", 1.0) < 0.60 or not exp_text.strip()) and filename.lower().endswith(
+        ".pdf"
+    ):
         docling_res = parse_with_docling(content, filename)
         if docling_res and docling_res.get("sections"):
             for s in docling_res["sections"]:
@@ -738,7 +739,7 @@ def extract_candidate_profile(content: bytes, filename: str) -> dict[str, Any]:
         for idx, block in enumerate([b.strip() for b in ach_text.split("\n\n") if b.strip()]):
             achievements.append(
                 {
-                    "entry_id": f"ach_{idx+1}",
+                    "entry_id": f"ach_{idx + 1}",
                     "title": block.splitlines()[0] if block else "Achievement",
                     "text": block,
                     "source": find_provenance(full_text, block[:40]),
