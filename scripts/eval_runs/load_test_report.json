@@ -1,0 +1,9 @@
+{
+  "parallel_runs": 5,
+  "candidates_per_run": 300,
+  "total_evaluations": 1500,
+  "total_wall_time_s": 0.8027637004852295,
+  "avg_run_latency_s": 0.698619031906128,
+  "throughput_eval_per_sec": 1868.5448770208804,
+  "status": "PASS"
+}

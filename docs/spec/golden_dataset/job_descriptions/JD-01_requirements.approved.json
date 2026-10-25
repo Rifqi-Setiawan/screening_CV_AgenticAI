@@ -1,0 +1,128 @@
+{
+  "job_id": "JD-01",
+  "requirement_set_version": 1,
+  "status": "APPROVED",
+  "note": "Set kriteria acuan yang SUDAH disetujui recruiter. Dipakai untuk evaluasi scoring. Compiler JD diuji terpisah: hasil compile JD-01_backend_engineer.md harus mencakup 10 konsep ini.",
+  "category_weights": {
+    "EXPERIENCE": 40,
+    "HARD_SKILLS": 30,
+    "EDUCATION_CERT": 15,
+    "ACHIEVEMENT": 15
+  },
+  "requirements": [
+    {
+      "requirement_id": "R1",
+      "description": "Minimal 3 tahun pengalaman sebagai Backend Engineer/Developer",
+      "category": "EXPERIENCE",
+      "kind": "EXPERIENCE_DURATION",
+      "importance": "MUST_HAVE",
+      "weight": 25,
+      "concepts": ["role_family:backend"],
+      "params": {"min_months": 36, "accepted_role_families": ["backend", "fullstack"]},
+      "source_text": "Minimal 3 tahun pengalaman sebagai Backend Engineer / Backend Developer."
+    },
+    {
+      "requirement_id": "R2",
+      "description": "Membangun REST API atau microservices yang berjalan di production",
+      "category": "EXPERIENCE",
+      "kind": "RESPONSIBILITY",
+      "importance": "STRONG_PREFERENCE",
+      "weight": 15,
+      "concepts": ["skill:rest_api", "skill:microservices"],
+      "params": {},
+      "source_text": "Pengalaman membangun REST API atau microservices yang berjalan di production."
+    },
+    {
+      "requirement_id": "R3",
+      "description": "Python (FastAPI, Django, atau Flask)",
+      "category": "HARD_SKILLS",
+      "kind": "SKILL",
+      "importance": "MUST_HAVE",
+      "weight": 10,
+      "concepts": ["skill:python"],
+      "params": {"acceptable_alternatives": []},
+      "source_text": "Menguasai Python (FastAPI, Django, atau Flask)."
+    },
+    {
+      "requirement_id": "R4",
+      "description": "PostgreSQL",
+      "category": "HARD_SKILLS",
+      "kind": "SKILL",
+      "importance": "MUST_HAVE",
+      "weight": 8,
+      "concepts": ["skill:postgresql"],
+      "params": {"acceptable_alternatives": []},
+      "source_text": "Berpengalaman dengan PostgreSQL."
+    },
+    {
+      "requirement_id": "R5",
+      "description": "Docker",
+      "category": "HARD_SKILLS",
+      "kind": "SKILL",
+      "importance": "STRONG_PREFERENCE",
+      "weight": 6,
+      "concepts": ["skill:docker"],
+      "params": {},
+      "source_text": "Terbiasa menggunakan Docker."
+    },
+    {
+      "requirement_id": "R6",
+      "description": "Kubernetes atau cloud (AWS, GCP, Azure)",
+      "category": "HARD_SKILLS",
+      "kind": "SKILL",
+      "importance": "NICE_TO_HAVE",
+      "weight": 6,
+      "concepts": ["skill:kubernetes", "skill:aws", "skill:gcp", "skill:azure"],
+      "params": {"match": "ANY"},
+      "source_text": "Pengalaman dengan Kubernetes atau cloud (AWS, GCP, Azure)."
+    },
+    {
+      "requirement_id": "R7",
+      "description": "S1 Teknik Informatika, Ilmu Komputer, Sistem Informasi, atau terkait",
+      "category": "EDUCATION_CERT",
+      "kind": "EDUCATION",
+      "importance": "STRONG_PREFERENCE",
+      "weight": 10,
+      "concepts": ["field:computing"],
+      "params": {
+        "min_level": "S1",
+        "strong_fields": ["Teknik Informatika", "Informatika", "Ilmu Komputer", "Computer Science", "Sistem Informasi", "Information Systems", "Rekayasa Perangkat Lunak", "Software Engineering", "Teknik Komputer"],
+        "partial_fields": ["Teknik Elektro", "Matematika", "Statistika", "Fisika", "Electrical Engineering", "Mathematics", "Statistics"]
+      },
+      "source_text": "S1 Teknik Informatika, Ilmu Komputer, Sistem Informasi, atau bidang terkait."
+    },
+    {
+      "requirement_id": "R8",
+      "description": "Sertifikasi cloud (AWS, Google Cloud, Azure)",
+      "category": "EDUCATION_CERT",
+      "kind": "CERTIFICATION",
+      "importance": "NICE_TO_HAVE",
+      "weight": 5,
+      "concepts": ["cert:aws", "cert:gcp", "cert:azure"],
+      "params": {"match": "ANY"},
+      "source_text": "Memiliki sertifikasi cloud (AWS, Google Cloud, atau Azure)."
+    },
+    {
+      "requirement_id": "R9",
+      "description": "Pencapaian terukur di bidang backend (performa, skala, efisiensi)",
+      "category": "ACHIEVEMENT",
+      "kind": "ACHIEVEMENT",
+      "importance": "NICE_TO_HAVE",
+      "weight": 8,
+      "concepts": ["achievement:quantified_backend"],
+      "params": {},
+      "source_text": "Memiliki pencapaian terukur di bidang backend (performa, skala, efisiensi)."
+    },
+    {
+      "requirement_id": "R10",
+      "description": "Memimpin atau membimbing tim teknis",
+      "category": "ACHIEVEMENT",
+      "kind": "LEADERSHIP",
+      "importance": "NICE_TO_HAVE",
+      "weight": 7,
+      "concepts": ["leadership:technical_team"],
+      "params": {},
+      "source_text": "Pengalaman memimpin atau membimbing tim teknis."
+    }
+  ]
+}

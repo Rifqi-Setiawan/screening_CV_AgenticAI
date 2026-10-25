@@ -1,0 +1,608 @@
+{
+  "job_id": "JD-01",
+  "run_id": "run_edge",
+  "as_of": "2026-10-01",
+  "results": [
+    {
+      "file": "I1_hr_generalist_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 17
+    },
+    {
+      "file": "I2_accountant_id.docx",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 14
+    },
+    {
+      "file": "I3_graphic_designer_two_column_en.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "HIDDEN_TEXT"
+      ],
+      "reasons": [],
+      "rank": 19
+    },
+    {
+      "file": "I4_sales_executive_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 15
+    },
+    {
+      "file": "I5_nurse_scan_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 16
+    },
+    {
+      "file": "M1_nodejs_backend_two_column.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 74.0,
+      "raw_score": 77.0,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "PARTIAL",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 57.0
+      },
+      "flags": [
+        "HIDDEN_TEXT",
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 8
+    },
+    {
+      "file": "M2_data_analyst_id.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 40.5,
+      "raw_score": 40.5,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "STRONG",
+        "R7": "PARTIAL",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 11
+    },
+    {
+      "file": "M3_fresh_graduate_scan_id.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 58.5,
+      "raw_score": 58.5,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "PARTIAL",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 3.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 9
+    },
+    {
+      "file": "M4_qa_automation_en.docx",
+      "status": "SCORED",
+      "band": "B",
+      "score": 49.0,
+      "raw_score": 49.0,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 10
+    },
+    {
+      "file": "M5_php_fullstack_two_column_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 49.0,
+      "raw_score": 64.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 66.0
+      },
+      "flags": [
+        "HIDDEN_TEXT"
+      ],
+      "reasons": [],
+      "rank": 12
+    },
+    {
+      "file": "S1_senior_backend_id.pdf",
+      "status": "DUPLICATE",
+      "rank": 999,
+      "band": "R",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "MANUAL_CHECK",
+      "requirement_states": {},
+      "metrics": {},
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "duplicate_of": "S1_senior_backend_id.pdf"
+    },
+    {
+      "file": "S2_backend_fintech_en.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 88.0,
+      "raw_score": 88.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 70.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 2
+    },
+    {
+      "file": "S3_backend_mixed_lang.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 75.0,
+      "raw_score": 75.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 47.5
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 7
+    },
+    {
+      "file": "S4_lead_backend_two_column.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 95.0,
+      "raw_score": 95.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "PARTIAL",
+        "R8": "STRONG",
+        "R9": "STRONG",
+        "R10": "STRONG"
+      },
+      "metrics": {
+        "backend_months": 70.0
+      },
+      "flags": [
+        "HIDDEN_TEXT",
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 1
+    },
+    {
+      "file": "S5_backend_healthtech_id.docx",
+      "status": "SCORED",
+      "band": "A",
+      "score": 87.5,
+      "raw_score": 87.5,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 76.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 4
+    },
+    {
+      "file": "E1_empty_cv.pdf",
+      "status": "NEEDS_REVIEW",
+      "rank": 999,
+      "band": "R",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "MANUAL_CHECK",
+      "requirement_states": {},
+      "metrics": {},
+      "flags": [],
+      "reasons": [
+        "INSUFFICIENT_CONTENT",
+        "EMPTY_DOCUMENT"
+      ],
+      "duplicate_of": null
+    },
+    {
+      "file": "E2_scan_of_S2.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 88.0,
+      "raw_score": 88.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 70.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 3
+    },
+    {
+      "file": "E3_hidden_prompt_injection.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "HIDDEN_TEXT",
+        "PROMPT_INJECTION"
+      ],
+      "reasons": [],
+      "rank": 18
+    },
+    {
+      "file": "E4_keyword_stuffing.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 15.0,
+      "raw_score": 15.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "PARTIAL",
+        "R4": "PARTIAL",
+        "R5": "PARTIAL",
+        "R6": "PARTIAL",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 13
+    },
+    {
+      "file": "E5a_counterfactual_A.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 75.0,
+      "raw_score": 75.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 47.5
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 5
+    },
+    {
+      "file": "E5b_counterfactual_B.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 75.0,
+      "raw_score": 75.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 47.5
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 6
+    },
+    {
+      "file": "E6_password_protected.pdf",
+      "status": "REJECTED",
+      "rank": 999,
+      "band": "R",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "MANUAL_CHECK",
+      "requirement_states": {},
+      "metrics": {},
+      "flags": [],
+      "reasons": [
+        "ENCRYPTED_FILE"
+      ],
+      "duplicate_of": null
+    },
+    {
+      "file": "E7_cover_letter_not_cv.pdf",
+      "status": "NEEDS_REVIEW",
+      "rank": 999,
+      "band": "R",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "MANUAL_CHECK",
+      "requirement_states": {},
+      "metrics": {},
+      "flags": [],
+      "reasons": [
+        "NOT_A_CV",
+        "INSUFFICIENT_CONTENT"
+      ],
+      "duplicate_of": null
+    },
+    {
+      "file": "E8_duplicate_of_S1.pdf",
+      "status": "DUPLICATE",
+      "rank": 999,
+      "band": "R",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "MANUAL_CHECK",
+      "requirement_states": {},
+      "metrics": {},
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "duplicate_of": "S1_senior_backend_id.pdf"
+    }
+  ]
+}

@@ -1,0 +1,637 @@
+{
+  "as_of": "2026-10-01",
+  "date_format": "YYYY-MM atau 'present'",
+  "year_only_rule": "awal=YYYY-07, akhir=YYYY-06",
+  "cvs": {
+    "S1_senior_backend_id.pdf": {
+      "cv_id": "S1",
+      "experiences": [
+        {
+          "title": "Senior Backend Engineer",
+          "organization": "PT Kilat Logistik Digital",
+          "start": "2022-03",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Backend Engineer",
+          "organization": "PT Sinar Pembayaran Nusantara",
+          "start": "2019-07",
+          "end": "2022-02",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Freelance Backend Developer",
+          "organization": "Proyek lepas (UMKM)",
+          "start": "2021-01",
+          "end": "2021-12",
+          "employment_type": "freelance"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Teknik Informatika",
+          "institution": "Universitas Teknologi Cakrawala"
+        }
+      ],
+      "certifications": [
+        "AWS Certified Developer – Associate"
+      ],
+      "skills": [
+        "Python",
+        "FastAPI",
+        "Django",
+        "Flask",
+        "PostgreSQL",
+        "Redis",
+        "Docker",
+        "Kubernetes",
+        "Google Cloud",
+        "Git"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "S2_backend_fintech_en.pdf": {
+      "cv_id": "S2",
+      "experiences": [
+        {
+          "title": "Backend Engineer",
+          "organization": "PayLoka (fintech)",
+          "start": "2022-08",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Junior Backend Developer",
+          "organization": "Aksara Software House",
+          "start": "2021-01",
+          "end": "2022-07",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "Bachelor of Computer Science (Ilmu Komputer)",
+          "institution": "Universitas Bina Cendekia"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Python",
+        "FastAPI",
+        "Django REST Framework",
+        "PostgreSQL",
+        "Docker",
+        "AWS",
+        "pytest",
+        "Git"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "S3_backend_mixed_lang.pdf": {
+      "cv_id": "S3",
+      "experiences": [
+        {
+          "title": "Backend Developer",
+          "organization": "PT Mitra Data Retail",
+          "start": "2023-03",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Backend Developer Intern",
+          "organization": "PT Mitra Data Retail",
+          "start": "2022-08",
+          "end": "2023-02",
+          "employment_type": "internship"
+        }
+      ],
+      "projects_count": 1,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Sistem Informasi",
+          "institution": "Universitas Pelita Nusantara"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Python",
+        "Flask",
+        "PostgreSQL",
+        "Docker",
+        "Redis",
+        "Git"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "S4_lead_backend_two_column.pdf": {
+      "cv_id": "S4",
+      "experiences": [
+        {
+          "title": "Lead Backend Engineer",
+          "organization": "Tokoloka (e-commerce)",
+          "start": "2023-03",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Backend Engineer",
+          "organization": "Ruang Kirim",
+          "start": "2021-01",
+          "end": "2023-02",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Teknik Elektro (Electrical Engineering)",
+          "institution": "Institut Teknologi Samudra Raya"
+        }
+      ],
+      "certifications": [
+        "Google Cloud Professional Cloud Developer"
+      ],
+      "skills": [
+        "Python",
+        "Go",
+        "FastAPI",
+        "PostgreSQL",
+        "MySQL",
+        "Docker",
+        "Kubernetes",
+        "GCP"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "S5_backend_healthtech_id.docx": {
+      "cv_id": "S5",
+      "experiences": [
+        {
+          "title": "Backend Developer",
+          "organization": "PT Arunika Kesehatan Digital",
+          "start": "2022-06",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Programmer",
+          "organization": "CV Teknologi Mandiri",
+          "start": "2020-07",
+          "end": "2022-06",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 1,
+      "organizations_count": 1,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Teknik Informatika",
+          "institution": "Universitas Lembayung Nusantara"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Python",
+        "Django",
+        "Flask",
+        "PostgreSQL",
+        "Docker",
+        "AWS",
+        "PHP"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "M1_nodejs_backend_two_column.pdf": {
+      "cv_id": "M1",
+      "experiences": [
+        {
+          "title": "Backend Developer",
+          "organization": "Kopi Kita Digital",
+          "start": "2022-02",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Teknik Informatika",
+          "institution": "Universitas Cahaya Timur"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Node.js",
+        "TypeScript",
+        "Express",
+        "PostgreSQL",
+        "Docker",
+        "Python (basic)"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "M2_data_analyst_id.pdf": {
+      "cv_id": "M2",
+      "experiences": [
+        {
+          "title": "Data Analyst",
+          "organization": "PT Belanja Hemat Indonesia",
+          "start": "2023-04",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Statistika",
+          "institution": "Universitas Bumi Pertiwi"
+        }
+      ],
+      "certifications": [
+        "Google Data Analytics Professional Certificate"
+      ],
+      "skills": [
+        "Python",
+        "pandas",
+        "SQL",
+        "PostgreSQL",
+        "BigQuery",
+        "Airflow",
+        "Looker Studio"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    },
+    "M3_fresh_graduate_scan_id.pdf": {
+      "cv_id": "M3",
+      "experiences": [
+        {
+          "title": "Backend Developer Intern",
+          "organization": "PT Solusi Awan Prima",
+          "start": "2025-02",
+          "end": "2025-07",
+          "employment_type": "internship"
+        }
+      ],
+      "projects_count": 1,
+      "organizations_count": 1,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Informatika",
+          "institution": "Universitas Nusantara Raya"
+        }
+      ],
+      "certifications": [
+        "Belajar Back-End Pemula dengan Python"
+      ],
+      "skills": [
+        "Python",
+        "FastAPI",
+        "PostgreSQL",
+        "Docker",
+        "Git"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "M4_qa_automation_en.docx": {
+      "cv_id": "M4",
+      "experiences": [
+        {
+          "title": "QA Automation Engineer",
+          "organization": "Telko Andalan",
+          "start": "2022-01",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "QA Engineer",
+          "organization": "Software House Lintas",
+          "start": "2020-06",
+          "end": "2021-12",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Teknik Informatika",
+          "institution": "Universitas Gemilang Bangsa"
+        }
+      ],
+      "certifications": [
+        "ISTQB Certified Tester Foundation Level"
+      ],
+      "skills": [
+        "Python",
+        "pytest",
+        "Selenium",
+        "Postman",
+        "PostgreSQL",
+        "Docker",
+        "Katalon Studio"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "M5_php_fullstack_two_column_id.pdf": {
+      "cv_id": "M5",
+      "experiences": [
+        {
+          "title": "Fullstack Developer",
+          "organization": "PT Kreasi Web Nusantara",
+          "start": "2021-05",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Sistem Informasi",
+          "institution": "Universitas Mentari Jaya"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "PHP",
+        "Laravel",
+        "MySQL",
+        "Vue.js",
+        "Docker",
+        "Git"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    },
+    "I1_hr_generalist_id.pdf": {
+      "cv_id": "I1",
+      "experiences": [
+        {
+          "title": "HR Generalist",
+          "organization": "PT Sentosa Manufaktur Indonesia",
+          "start": "2022-01",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Staf Rekrutmen",
+          "organization": "PT Karya Sumber Daya",
+          "start": "2020-07",
+          "end": "2021-12",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Psikologi",
+          "institution": "Universitas Harapan Bangsa Raya"
+        }
+      ],
+      "certifications": [
+        "Sertifikasi Kompetensi Human Capital Officer"
+      ],
+      "skills": [
+        "Rekrutmen",
+        "Payroll",
+        "BPJS",
+        "UU Ketenagakerjaan",
+        "Microsoft Excel"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    },
+    "I2_accountant_id.docx": {
+      "cv_id": "I2",
+      "experiences": [
+        {
+          "title": "Staf Akuntansi",
+          "organization": "PT Agro Lestari Sumatera",
+          "start": "2021-03",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Akuntansi",
+          "institution": "Universitas Sumatera Cemerlang"
+        }
+      ],
+      "certifications": [
+        "Brevet Pajak A dan B"
+      ],
+      "skills": [
+        "Akuntansi",
+        "Perpajakan",
+        "SAP",
+        "Microsoft Excel"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    },
+    "I3_graphic_designer_two_column_en.pdf": {
+      "cv_id": "I3",
+      "experiences": [
+        {
+          "title": "Graphic Designer",
+          "organization": "Studio Rupa Kreatif",
+          "start": "2021-09",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Desain Komunikasi Visual",
+          "institution": "Institut Seni Nusa Dewata"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Adobe Illustrator",
+        "Photoshop",
+        "Figma",
+        "Branding",
+        "Typography"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location",
+        "linkedin"
+      ]
+    },
+    "I4_sales_executive_id.pdf": {
+      "cv_id": "I4",
+      "experiences": [
+        {
+          "title": "Sales Supervisor",
+          "organization": "PT Distribusi Prima Jaya",
+          "start": "2021-06",
+          "end": "present",
+          "employment_type": "full_time"
+        },
+        {
+          "title": "Sales Executive",
+          "organization": "PT Distribusi Prima Jaya",
+          "start": "2019-01",
+          "end": "2021-05",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Manajemen",
+          "institution": "Universitas Wijaya Persada"
+        }
+      ],
+      "certifications": [],
+      "skills": [
+        "Negosiasi",
+        "Account Management",
+        "Microsoft Excel",
+        "CRM"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    },
+    "I5_nurse_scan_id.pdf": {
+      "cv_id": "I5",
+      "experiences": [
+        {
+          "title": "Perawat Pelaksana IGD",
+          "organization": "RS Sehat Sentosa",
+          "start": "2020-08",
+          "end": "present",
+          "employment_type": "full_time"
+        }
+      ],
+      "projects_count": 0,
+      "organizations_count": 0,
+      "education": [
+        {
+          "level": "S1",
+          "degree_raw": "S1 Keperawatan dan Profesi Ners",
+          "institution": "Universitas Kesehatan Pakuan Raya"
+        }
+      ],
+      "certifications": [
+        "STR Perawat",
+        "BTCLS"
+      ],
+      "skills": [
+        "Asuhan keperawatan",
+        "BTCLS",
+        "Rekam medis elektronik"
+      ],
+      "identity_fields_present": [
+        "name",
+        "email",
+        "phone",
+        "location"
+      ]
+    }
+  }
+}

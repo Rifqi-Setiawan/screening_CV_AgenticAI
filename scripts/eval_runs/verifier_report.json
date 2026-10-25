@@ -1,0 +1,54 @@
+{
+  "total_verifier_calls": 45,
+  "verifier_calls_by_kind": {
+    "RESPONSIBILITY": 15,
+    "ACHIEVEMENT": 15,
+    "LEADERSHIP": 15
+  },
+  "grounding_fails": 19,
+  "changed_results_count": 5,
+  "changed_results": [
+    {
+      "file": "M4_qa_automation_en.docx",
+      "requirement_id": "R2",
+      "kind": "RESPONSIBILITY",
+      "rule_state": "PARTIAL",
+      "verifier_state": "NOT_DEMONSTRATED",
+      "flags": []
+    },
+    {
+      "file": "M5_php_fullstack_two_column_id.pdf",
+      "requirement_id": "R2",
+      "kind": "RESPONSIBILITY",
+      "rule_state": "STRONG",
+      "verifier_state": "PARTIAL",
+      "flags": []
+    },
+    {
+      "file": "M5_php_fullstack_two_column_id.pdf",
+      "requirement_id": "R9",
+      "kind": "ACHIEVEMENT",
+      "rule_state": "STRONG",
+      "verifier_state": "PARTIAL",
+      "flags": []
+    },
+    {
+      "file": "S4_lead_backend_two_column.pdf",
+      "requirement_id": "R2",
+      "kind": "RESPONSIBILITY",
+      "rule_state": "STRONG",
+      "verifier_state": "PARTIAL",
+      "flags": []
+    },
+    {
+      "file": "S5_backend_healthtech_id.docx",
+      "requirement_id": "R2",
+      "kind": "RESPONSIBILITY",
+      "rule_state": "STRONG",
+      "verifier_state": "PARTIAL",
+      "flags": []
+    }
+  ],
+  "rule_accuracy": "150/150 (100.00%)",
+  "verifier_accuracy": "147/150 (98.00%)"
+}

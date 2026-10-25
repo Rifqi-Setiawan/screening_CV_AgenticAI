@@ -1,0 +1,191 @@
+# Role families taxonomy mapping titles, domain terms, and related families (FX-31).
+
+backend:
+  titles:
+    - backend
+    - back-end
+    - back end
+    - api developer
+    - server-side
+    - golang developer
+    - python developer
+    - java developer
+    - php developer
+  domain_terms:
+    - backend
+    - api
+    - server
+    - microservices
+    - database
+    - sql
+    - cloud
+  related:
+    - fullstack
+
+fullstack:
+  titles:
+    - fullstack
+    - full-stack
+    - full stack
+  domain_terms:
+    - fullstack
+    - web developer
+    - frontend
+    - backend
+  related:
+    - backend
+    - frontend
+
+frontend:
+  titles:
+    - frontend
+    - front-end
+    - front end
+    - ui engineer
+    - ui developer
+    - web designer
+  domain_terms:
+    - react
+    - vue
+    - javascript
+    - typescript
+    - css
+    - html
+  related:
+    - fullstack
+
+data:
+  titles:
+    - data analyst
+    - data engineer
+    - data scientist
+    - bi analyst
+    - business intelligence
+    - analytics engineer
+    - machine learning engineer
+    - ml engineer
+  domain_terms:
+    - sql
+    - python
+    - dashboard
+    - bi
+    - analytics
+    - etl
+    - warehouse
+    - reporting
+  related: []
+
+qa:
+  titles:
+    - qa
+    - quality assurance
+    - software tester
+    - test engineer
+    - sdet
+    - automation tester
+  domain_terms:
+    - testing
+    - automation
+    - test cases
+    - selenium
+    - cypress
+  related: []
+
+devops:
+  titles:
+    - devops
+    - sre
+    - site reliability
+    - platform engineer
+    - cloud engineer
+    - infrastructure engineer
+    - system administrator
+    - sysadmin
+  domain_terms:
+    - docker
+    - kubernetes
+    - ci/cd
+    - terraform
+    - aws
+    - linux
+  related: []
+
+civil_engineering:
+  titles:
+    - teknik sipil
+    - civil engineer
+    - site engineer
+    - project manager sipil
+    - surveyor
+    - drafter sipil
+  domain_terms:
+    - sipil
+    - civil
+    - konstruksi
+    - lapangan
+    - proyek sipil
+    - bangunan
+    - gedung
+    - infrastruktur
+    - rab
+    - struktur
+  related:
+    - engineering
+
+hr:
+  titles:
+    - hr
+    - human resource
+    - hrd
+    - sdm
+    - recruiter
+    - talent acquisition
+    - people operations
+    - staf rekrutmen
+    - payroll
+  domain_terms:
+    - hr
+    - human capital
+    - recruiter
+    - talent
+    - payroll
+    - bpjs
+    - pph 21
+    - hubungan industrial
+    - absensi
+  related: []
+
+finance:
+  titles:
+    - finance
+    - accounting
+    - akuntan
+    - tax
+    - perpajakan
+    - finance analyst
+  domain_terms:
+    - business
+    - consult
+    - finance
+    - financial
+    - accounting
+    - akuntansi
+    - pajak
+    - tax
+    - audit
+    - konsultan
+  related: []
+
+ambiguous:
+  titles:
+    - programmer
+    - software engineer
+    - developer
+    - it staff
+    - staff it
+    - engineer
+    - technical leader
+    - technical lead
+    - consultant
+  domain_terms: []
+  related: []

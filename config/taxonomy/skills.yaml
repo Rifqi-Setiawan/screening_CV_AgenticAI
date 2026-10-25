@@ -1,0 +1,1140 @@
+skill:python:
+  label: Python
+  type: language
+  aliases:
+  - python
+  - python3
+  - py
+  - fastapi
+  - django
+  - flask
+  related: []
+skill:fastapi:
+  label: FastAPI
+  type: framework
+  aliases:
+  - fastapi
+  - fast api
+  broader: skill:python
+skill:django:
+  label: Django
+  type: framework
+  aliases:
+  - django
+  - django rest framework
+  - drf
+  broader: skill:python
+skill:flask:
+  label: Flask
+  type: framework
+  aliases:
+  - flask
+  broader: skill:python
+skill:go:
+  label: Go
+  type: language
+  aliases:
+  - golang
+  - go lang
+  - go (golang)
+  - 'go '
+  - go/
+  related: []
+skill:java:
+  label: Java
+  type: language
+  aliases:
+  - java
+  - java 8
+  - java 11
+  - java 17
+  - j2ee
+  - spring
+  - spring boot
+skill:spring:
+  label: Spring Boot
+  type: framework
+  aliases:
+  - spring
+  - spring boot
+  - springboot
+  broader: skill:java
+skill:nodejs:
+  label: Node.js
+  type: runtime
+  aliases:
+  - node
+  - node.js
+  - nodejs
+  - node js
+  related:
+  - skill:javascript
+skill:express:
+  label: Express
+  type: framework
+  aliases:
+  - express
+  - express.js
+  - expressjs
+  broader: skill:nodejs
+skill:javascript:
+  label: JavaScript
+  type: language
+  aliases:
+  - javascript
+  - js
+  - ecmascript
+  - node
+  - nodejs
+skill:typescript:
+  label: TypeScript
+  type: language
+  aliases:
+  - typescript
+  - ts
+skill:php:
+  label: PHP
+  type: language
+  aliases:
+  - php
+skill:laravel:
+  label: Laravel
+  type: framework
+  aliases:
+  - laravel
+  broader: skill:php
+skill:codeigniter:
+  label: CodeIgniter
+  type: framework
+  aliases:
+  - codeigniter
+  - ci (php)
+  broader: skill:php
+skill:csharp:
+  label: C#
+  type: language
+  aliases:
+  - c#
+  - csharp
+  - .net
+  - dotnet
+  - asp.net
+skill:react:
+  label: React
+  type: framework
+  aliases:
+  - react
+  - reactjs
+  - react.js
+  - react js
+skill:vue:
+  label: Vue.js
+  type: framework
+  aliases:
+  - vue
+  - vuejs
+  - vue.js
+  - vue js
+skill:flutter:
+  label: Flutter
+  type: framework
+  aliases:
+  - flutter
+  - dart
+skill:postgresql:
+  label: PostgreSQL
+  type: database
+  aliases:
+  - postgresql
+  - postgres
+  - postgre sql
+  - postgre
+  - psql
+  - pgsql
+  related:
+  - skill:mysql
+skill:mysql:
+  label: MySQL
+  type: database
+  aliases:
+  - mysql
+  - mariadb
+  related:
+  - skill:postgresql
+skill:sqlserver:
+  label: SQL Server
+  type: database
+  aliases:
+  - sql server
+  - ms sql server
+  - mssql
+skill:oracle_db:
+  label: Oracle Database
+  type: database
+  aliases:
+  - oracle
+  - oracle db
+  - pl/sql
+skill:mongodb:
+  label: MongoDB
+  type: database
+  aliases:
+  - mongodb
+  - mongo
+skill:redis:
+  label: Redis
+  type: database
+  aliases:
+  - redis
+skill:sql:
+  label: SQL
+  type: language
+  aliases:
+  - sql
+  - mysql
+  - postgresql
+  - ansi sql
+  - relational database
+skill:bigquery:
+  label: BigQuery
+  type: data
+  aliases:
+  - bigquery
+  - big query
+  related:
+  - skill:gcp
+skill:docker:
+  label: Docker
+  type: tool
+  aliases:
+  - docker
+  - dockerized
+  - dockerised
+  - containerized
+  - containerised
+  - docker compose
+  - docker-compose
+  - container
+  related:
+  - skill:kubernetes
+skill:kubernetes:
+  label: Kubernetes
+  type: tool
+  aliases:
+  - kubernetes
+  - k8s
+  - gke
+  - eks
+  - aks
+  - openshift
+  related:
+  - skill:docker
+skill:aws:
+  label: AWS
+  type: cloud
+  aliases:
+  - aws
+  - amazon web services
+  - ec2
+  - ecs
+  - rds
+  - aws s3
+  - amazon s3
+  - sqs
+  - aws lambda
+  - s3
+  - lambda
+skill:gcp:
+  label: Google Cloud
+  type: cloud
+  aliases:
+  - gcp
+  - google cloud
+  - google cloud platform
+  - gke
+  - cloud run
+  - bigquery
+skill:azure:
+  label: Azure
+  type: cloud
+  aliases:
+  - azure
+  - microsoft azure
+skill:rest_api:
+  label: REST API
+  type: method
+  aliases:
+  - rest api
+  - restful api
+  - restful
+  - rest apis
+  - api
+  - endpoint
+skill:microservices:
+  label: Microservices
+  type: method
+  aliases:
+  - microservices
+  - microservice
+  - micro-services
+  - layanan mikro
+skill:grpc:
+  label: gRPC
+  type: method
+  aliases:
+  - grpc
+skill:kafka:
+  label: Kafka
+  type: tool
+  aliases:
+  - kafka
+  - apache kafka
+skill:git:
+  label: Git
+  type: tool
+  aliases:
+  - git
+  - github
+  - gitlab
+  - bitbucket
+skill:ci_cd:
+  label: CI/CD
+  type: method
+  aliases:
+  - ci/cd
+  - cicd
+  - ci pipeline
+  - github actions
+  - gitlab ci
+  - jenkins
+skill:linux:
+  label: Linux
+  type: tool
+  aliases:
+  - linux
+  - ubuntu
+  - centos
+  - debian
+skill:pytest:
+  label: pytest
+  type: tool
+  aliases:
+  - pytest
+  broader: skill:python
+skill:selenium:
+  label: Selenium
+  type: tool
+  aliases:
+  - selenium
+skill:katalon:
+  label: Katalon Studio
+  type: tool
+  aliases:
+  - katalon
+  - katalon studio
+skill:api_testing:
+  label: API Testing
+  type: method
+  aliases:
+  - api testing
+  - postman
+  - api test automation
+skill:pandas:
+  label: pandas
+  type: library
+  aliases:
+  - pandas
+  broader: skill:python
+skill:airflow:
+  label: Airflow
+  type: tool
+  aliases:
+  - airflow
+  - apache airflow
+skill:sap:
+  label: SAP
+  type: tool
+  aliases:
+  - sap
+  - sap erp
+  - sap pp
+  - sap qm
+  - sap wm
+  - sap mm
+skill:excel:
+  label: Microsoft Excel
+  type: tool
+  aliases:
+  - excel
+  - ms excel
+  - microsoft excel
+  - pivot table
+skill:figma:
+  label: Figma
+  type: tool
+  aliases:
+  - figma
+skill:proxmox:
+  label: Proxmox
+  type: tool
+  aliases:
+  - proxmox
+skill:splunk:
+  label: Splunk
+  type: tool
+  aliases:
+  - splunk
+  - siem
+skill:recruitment:
+  label: Rekrutmen
+  type: domain
+  aliases:
+  - rekrutmen
+  - recruitment
+  - recruiting
+  - talent acquisition
+  - sourcing kandidat
+  - screening cv
+  - interview kandidat
+  - seleksi
+  - sourcing
+  - screening
+skill:payroll:
+  label: Payroll
+  type: domain
+  aliases:
+  - payroll
+  - penggajian
+  - administrasi pengupahan
+  - upah
+skill:bpjs:
+  label: BPJS
+  type: domain
+  aliases:
+  - bpjs
+  - bpjs kesehatan
+  - bpjs ketenagakerjaan
+  - jaminan sosial
+skill:labor_law_id:
+  label: UU Ketenagakerjaan
+  type: domain
+  aliases:
+  - uu ketenagakerjaan
+  - hubungan industrial
+  - pkwt
+  - pkwtt
+  - pesangon
+  - peraturan perusahaan
+cert:aws:
+  label: Sertifikasi AWS
+  aliases:
+  - aws certified
+  - aws certified developer
+  - aws certified solutions architect
+  - aws certified cloud practitioner
+cert:gcp:
+  label: Sertifikasi Google Cloud
+  aliases:
+  - google cloud professional
+  - google cloud certified
+  - associate cloud engineer
+  - professional cloud developer
+cert:azure:
+  label: Sertifikasi Azure
+  aliases:
+  - microsoft certified azure
+  - az-900
+  - az-104
+  - az-204
+cert:hr:
+  label: Sertifikasi HR
+  aliases:
+  - bnsp human capital
+  - human capital officer
+  - sertifikasi kompetensi hr
+  - chrp
+  - shrm
+field:computing:
+  label: Komputasi
+  aliases:
+  - teknik informatika
+  - informatika
+  - informatics
+  - ilmu komputer
+  - computer science
+  - sistem informasi
+  - information systems
+  - rekayasa perangkat lunak
+  - software engineering
+  - teknik komputer
+  - computer engineering
+  - teknologi informasi
+  - information technology
+  - sains data
+  - data science
+  related:
+  - matematika
+  - mathematics
+  - math
+  - statistika
+  - statistics
+  - teknik elektro
+  - electrical engineering
+  - teknologi komputer
+field:mathematics:
+  label: Matematika & Sains Kuantitatif
+  aliases:
+  - matematika
+  - mathematics
+  - math
+  - statistika
+  - statistics
+  - aktuaria
+  - actuarial science
+  - data science
+  - sains data
+  related:
+  - informatika
+  - informatics
+  - teknik informatika
+  - computer science
+  - ilmu komputer
+  - sistem informasi
+  - software engineering
+field:hr:
+  label: SDM
+  aliases:
+  - psikologi
+  - psychology
+  - manajemen sdm
+  - manajemen sumber daya manusia
+  - human resource management
+  - manajemen
+role_family:backend:
+  label: Role family backend
+  note: lihat role_families.yaml
+role_family:hr:
+  label: Role family HR
+achievement:quantified_backend:
+  label: Pencapaian terukur backend
+  note: bullet pekerjaan dengan angka hasil + domain backend
+achievement:quantified_hr:
+  label: Pencapaian terukur HR
+leadership:technical_team:
+  label: Memimpin tim teknis
+role_family:civil_engineering:
+  label: Civil Engineering
+  aliases:
+  - sipil
+  - civil
+  - konstruksi
+  - pelaksana
+  - site manager
+  - site engineer
+  - pengawas lapangan
+experience:civil_construction:
+  label: Civil Construction
+  aliases:
+  - sipil
+  - konstruksi
+  - pelaksana
+  - site engineer
+  - proyek
+  - pengawas
+  - kontraktor
+  - smelter
+  - bangunan
+skill:autocad:
+  label: Autocad
+  aliases:
+  - autocad
+  - cad
+  - computer aided design
+  - drafting
+  - shop drawing
+  - gambar teknik
+  - gambar kerja
+skill:technical_drawing:
+  label: Technical Drawing
+  aliases:
+  - gambar teknik
+  - shop drawing
+  - gambar kerja
+  - autocad
+  - cad
+  - drafting
+skill:shop_drawing:
+  label: Shop Drawing
+  aliases:
+  - shop drawing
+  - gambar kerja
+  - gambar teknik
+  - autocad
+skill:sketchup:
+  label: Sketchup
+  aliases:
+  - sketchup
+  - 3d modelling
+  - sketch up
+skill:sap2000:
+  label: Sap2000
+  aliases:
+  - sap2000
+  - sap 2000
+  - etabs
+  - analisis struktur
+skill:etabs:
+  label: Etabs
+  aliases:
+  - etabs
+  - sap2000
+skill:rab_calculation:
+  label: Rab Calculation
+  aliases:
+  - rab
+  - rencana anggaran biaya
+  - budgeting
+  - estimasi biaya
+  - estimator
+  - bill of quantity
+  - boq
+skill:project_scheduling:
+  label: Project Scheduling
+  aliases:
+  - ms project
+  - microsoft project
+  - penjadwalan
+  - scheduling
+  - kurva s
+  - manajemen proyek
+skill:microsoft_project:
+  label: Microsoft Project
+  aliases:
+  - microsoft project
+  - ms project
+  - project
+skill:earthwork:
+  label: Earthwork
+  aliases:
+  - pekerjaan tanah
+  - tanah dasar
+  - galian
+  - timbunan
+  - cut and fill
+  - earthwork
+skill:foundation:
+  label: Foundation
+  aliases:
+  - pondasi
+  - foundation
+  - tiang pancang
+  - bored pile
+  - base a
+skill:concrete_work:
+  label: Concrete Work
+  aliases:
+  - beton
+  - concrete
+  - pembesian
+  - bekisting
+  - lean concrete
+  - rigid pavement
+  - readymix
+skill:drainage:
+  label: Drainage
+  aliases:
+  - drainase
+  - drainage
+  - saluran air
+  - gorong
+  - plumbing
+skill:drainase:
+  label: Drainase
+  aliases:
+  - drainase
+  - drainage
+  - saluran air
+  - gorong
+  - plumbing
+skill:finishing_work:
+  label: Finishing Work
+  aliases:
+  - finishing
+  - pekerjaan finishing
+  - arsitektur
+skill:k3_konstruksi:
+  label: K3 Konstruksi
+  aliases:
+  - k3
+  - hse
+  - keselamatan kerja
+  - keselamatan dan kesehatan kerja
+  - k3 konstruksi
+  - ahli k3
+  - bimtek k3
+skill:construction_safety:
+  label: Construction Safety
+  aliases:
+  - k3
+  - hse
+  - keselamatan kerja
+  - safety
+skill:site_supervision:
+  label: Site Supervision
+  aliases:
+  - pengawas
+  - pengawasan
+  - site supervision
+  - pelaksana
+  - mandor
+  - site manager
+skill:subcontractor_management:
+  label: Subcontractor Management
+  aliases:
+  - subkontraktor
+  - mandor
+  - tenaga kerja
+  - pekerja
+  - vendor
+skill:progress_reporting:
+  label: Progress Reporting
+  aliases:
+  - laporan progres
+  - laporan harian
+  - laporan mingguan
+  - laporan bulanan
+  - opname
+  - progress report
+skill:quality_control:
+  label: Quality Control
+  aliases:
+  - quality control
+  - pengawasan mutu
+  - inspeksi
+  - qc
+  - qa/qc
+skill:sports_facility_construction:
+  label: Sports Facility Construction
+  aliases:
+  - lapangan
+  - olahraga
+  - sports
+  - stadion
+skill:swimming_pool_construction:
+  label: Swimming Pool Construction
+  aliases:
+  - kolam renang
+  - pool
+  - waterwork
+cert:ska:
+  label: Ska
+  aliases:
+  - ska
+  - sertifikat keahlian
+  - ahli muda
+  - ahli madya
+  - ahli utama
+  - lpjk
+cert:skt:
+  label: Skt
+  aliases:
+  - skt
+  - sertifikat keterampilan
+cert:k3_konstruksi:
+  label: K3 Konstruksi
+  aliases:
+  - k3
+  - ahli k3
+  - k3 konstruksi
+  - bimtek k3
+  - ahli keselamatan
+  - hse
+education:civil_engineering:
+  label: Civil Engineering
+  aliases:
+  - teknik sipil
+  - civil engineering
+  - teknik bangunan
+  - sarjana terapan teknik sipil
+  - sipil
+role_family:business_analyst:
+  label: Business Analyst
+  aliases:
+  - business analyst
+  - analis bisnis
+  - business development
+  - consultant
+  - analyst
+  - analis
+role_family:management_consultant:
+  label: Management Consultant
+  aliases:
+  - consultant
+  - konsultan
+  - advisory
+  - strategic
+  - business consultant
+role_family:financial_analyst:
+  label: Financial Analyst
+  aliases:
+  - financial analyst
+  - finance analyst
+  - analis keuangan
+  - investment analyst
+  - analis investasi
+  - finance
+  - keuangan
+skill:microsoft_excel:
+  label: Microsoft Excel
+  aliases:
+  - excel
+  - ms excel
+  - microsoft excel
+  - spreadsheet
+  - ms. office
+  - microsoft office
+  - google sheets
+  - pivot table
+  - power query
+  - vlookup
+skill:financial_modeling:
+  label: Financial Modeling
+  aliases:
+  - financial model
+  - financial modeling
+  - pemodelan keuangan
+  - model keuangan
+  - pemodelan data dan keuangan
+  - financial forecast
+  - proyeksi keuangan
+  - master budget
+  - budgeting
+  - financial projection
+skill:data_modeling:
+  label: Data Modeling
+  aliases:
+  - data modeling
+  - pemodelan data
+  - model data
+  - pemodelan data dan keuangan
+skill:data_analysis:
+  label: Data Analysis
+  aliases:
+  - data analysis
+  - analisis data
+  - analisa data
+  - data analyst
+  - analythical thinking
+  - analytical thinking
+  - spss
+  - r studio
+  - rstudio
+  - stata
+  - warppls
+  - olah data
+  - regresi
+  - kuantitatif
+skill:report_writing:
+  label: Report Writing
+  aliases:
+  - penulisan laporan
+  - report writing
+  - laporan bisnis
+  - rekomendasi bisnis
+  - laporan keuangan
+  - menyusun laporan
+  - membuat laporan
+  - laporan
+  - reporting
+skill:presentation:
+  label: Presentation
+  aliases:
+  - presentasi
+  - presentation
+  - public speaking
+  - pitch deck
+  - slide
+  - powerpoint
+  - komunikasi
+  - presentations skill
+skill:business_analysis:
+  label: Business Analysis
+  aliases:
+  - business analysis
+  - analisis bisnis
+  - analisa bisnis
+  - business analyst
+  - analis bisnis
+  - business process
+  - proses bisnis
+  - gap analysis
+  - analisis operasional
+skill:cash_flow_projection:
+  label: Cash Flow Projection
+  aliases:
+  - cash flow
+  - arus kas
+  - proyeksi arus kas
+  - laporan arus kas
+  - cash management
+skill:npv:
+  label: Npv
+  aliases:
+  - npv
+  - net present value
+skill:irr:
+  label: Irr
+  aliases:
+  - irr
+  - internal rate of return
+skill:sensitivity_analysis:
+  label: Sensitivity Analysis
+  aliases:
+  - analisis sensitivitas
+  - sensitivity analysis
+skill:investment_analysis:
+  label: Investment Analysis
+  aliases:
+  - analisis investasi
+  - investment analysis
+  - analisis kelayakan investasi
+  - investasi
+  - investment
+  - kelayakan investasi
+skill:market_research:
+  label: Market Research
+  aliases:
+  - market research
+  - riset pasar
+  - penelitian pasar
+  - analisis pasar
+  - survei pasar
+skill:industry_analysis:
+  label: Industry Analysis
+  aliases:
+  - analisis industri
+  - industry analysis
+  - competitive analysis
+  - analisis kompetitor
+  - analisis persaingan
+skill:feasibility_study:
+  label: Feasibility Study
+  aliases:
+  - feasibility study
+  - studi kelayakan
+  - kelayakan bisnis
+  - kelayakan proyek
+  - analisis kelayakan
+skill:strategic_planning:
+  label: Strategic Planning
+  aliases:
+  - strategic planning
+  - perencanaan strategis
+  - perencanaan strategi
+  - business plan
+  - rencana bisnis
+  - swot
+  - pestel
+  - business model canvas
+  - strategi bisnis
+skill:business_valuation:
+  label: Business Valuation
+  aliases:
+  - valuasi
+  - valuation
+  - business valuation
+  - valuasi bisnis
+  - penilaian bisnis
+skill:risk_management:
+  label: Risk Management
+  aliases:
+  - manajemen risiko
+  - risk management
+  - analisis risiko
+  - mitigasi risiko
+skill:power_bi:
+  label: Power Bi
+  aliases:
+  - power bi
+  - powerbi
+  - power-bi
+skill:tableau:
+  label: Tableau
+  aliases:
+  - tableau
+skill:data_visualization:
+  label: Data Visualization
+  aliases:
+  - data visualization
+  - visualisasi data
+  - dashboard
+  - tableau
+  - power bi
+  - powerbi
+  - looker
+  - looker studio
+  - google data studio
+  - vosviewer
+skill:sqlite:
+  label: Sqlite
+  aliases:
+  - sqlite
+  - sqlite3
+field:civil_engineering:
+  label: Teknik Sipil
+  aliases:
+  - teknik sipil
+  - civil engineering
+  - teknik bangunan
+  - sarjana terapan teknik sipil
+  - sipil
+  related:
+  - teknik
+  - rekayasa
+  - arsitektur
+  - perencanaan wilayah dan kota
+field:business_finance:
+  label: Bisnis & Keuangan
+  aliases:
+  - manajemen
+  - management
+  - akuntansi
+  - accounting
+  - ekonomi
+  - economics
+  - teknik industri
+  - industrial engineering
+  - bisnis
+  - business
+  - administrasi bisnis
+  - business administration
+  - keuangan
+  - finance
+  - statistika
+  - statistics
+  - agribisnis
+  - agribusiness
+  - matematika
+  - mathematics
+  - hukum ekonomi syariah
+  - sharia accounting
+  - digital business
+  - s.e
+  - s.stat
+  - mba
+  related:
+  - hukum
+  - hubungan internasional
+  - administrasi
+  - sains
+  - teknik
+  - sosial
+skill:business_process_modeling:
+  label: Business Process Modeling
+  type: skill
+  aliases:
+  - bpmn
+  - business process modeling
+  - pemodelan proses bisnis
+  - pemodelan bisnis
+  - business process
+  - proses bisnis
+  - way of working
+skill:sop_development:
+  label: SOP Development
+  type: skill
+  aliases:
+  - sop
+  - sops
+  - (sops)
+  - standard operating procedure
+  - standard operating procedures
+  - prosedur operasional standar
+  - penyusunan sop
+  - work instructions
+  - procedures
+skill:workflow_analysis:
+  label: Workflow Analysis
+  type: skill
+  aliases:
+  - workflow
+  - workflow analysis
+  - alur kerja
+  - analisis alur kerja
+  - process analysis
+skill:dcf:
+  label: DCF
+  type: skill
+  aliases:
+  - dcf
+  - discounted cash flow
+skill:npv:
+  label: NPV
+  type: skill
+  aliases:
+  - npv
+  - net present value
+skill:irr:
+  label: IRR
+  type: skill
+  aliases:
+  - irr
+  - internal rate of return
+skill:swot_analysis:
+  label: SWOT Analysis
+  type: skill
+  aliases:
+  - swot
+  - swot analysis
+  - analisis swot
+skill:pestel_analysis:
+  label: PESTEL Analysis
+  type: skill
+  aliases:
+  - pestel
+  - pestel analysis
+  - pestle
+  - pestle analysis
+skill:looker_studio:
+  label: Looker Studio
+  type: tool
+  aliases:
+  - looker studio
+  - looker
+  - google data studio
+  - datastudio
+skill:stata:
+  label: Stata
+  type: tool
+  aliases:
+  - stata
+skill:team_leadership:
+  label: Team Leadership
+  type: skill
+  aliases:
+  - team leadership
+  - head of
+  - team lead
+  - lead a team
+  - memimpin tim
+  - kepemimpinan
+skill:project_coordination:
+  label: Project Coordination
+  type: skill
+  aliases:
+  - project coordination
+  - project coordinator
+  - project manager
+  - koordinasi proyek
+skill:business_competition:
+  label: Business Competition Achievement
+  type: skill
+  aliases:
+  - olympiad
+  - olimpiade
+  - 3rd place
+  - best presentation
+  - juara
+  - competition
+  - kompetisi bisnis
+

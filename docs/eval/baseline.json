@@ -1,0 +1,24 @@
+{
+  "evaluated_at": "2026-10-14T16:15:00+07:00",
+  "dataset": "golden_dataset_jd01",
+  "total_candidates": 15,
+  "metrics": {
+    "ndcg_at_10": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "precision_at_shortlist": 1.0,
+    "criteria_status_accuracy": 1.0,
+    "score_tolerance_accuracy": 1.0,
+    "extraction_dates_accuracy": 1.0,
+    "extraction_titles_accuracy": 1.0,
+    "extraction_skills_recall": 1.0,
+    "extraction_certs_recall": 1.0,
+    "extraction_education_accuracy": 1.0
+  },
+  "gate_thresholds": {
+    "min_ndcg_at_5": 0.95,
+    "min_ndcg_at_10": 0.95,
+    "min_precision_at_shortlist": 0.90,
+    "max_allowed_metric_drop": 0.02
+  }
+}

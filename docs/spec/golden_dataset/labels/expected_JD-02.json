@@ -1,0 +1,39 @@
+{
+  "job_id": "JD-02",
+  "as_of": "2026-10-01",
+  "requirement_set": "job_descriptions/JD-02_requirements.approved.json",
+  "assertions": {
+    "rank_1": "I1",
+    "rank_1_min_score": 80,
+    "others_max_score": 30
+  },
+  "candidates": [
+    {
+      "cv_id": "I1",
+      "expected_states": {
+        "R1": [
+          "STRONG"
+        ],
+        "R2": [
+          "STRONG"
+        ],
+        "R3": [
+          "STRONG"
+        ],
+        "R4": [
+          "STRONG"
+        ],
+        "R5": [
+          "STRONG"
+        ],
+        "R6": [
+          "STRONG"
+        ],
+        "R7": [
+          "STRONG"
+        ]
+      }
+    }
+  ],
+  "note": "Uji kontrol: semua 15 CV inti di-screening untuk JD-02. CV HR (I1) wajib peringkat 1."
+}

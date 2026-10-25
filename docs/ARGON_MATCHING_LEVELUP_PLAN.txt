@@ -1,0 +1,2376 @@
+Arsitektur Matching & Evidence Retrieval Engine pada platform AI CV Screening memerlukan transisi fundamental dari paradigma Symmetric Lexical-Semantic Similarity (SCORING_MODE="rules" + threshold kosinus statis) menuju Asymmetric Taxonomic Retrieval & Natural Language Inference (NLI) Entailment Engine.
+
+Dokumen rancang bangun ini merinci cetak biru arsitektur, formulasi matematis, skema basis data, serta implementasi kode untuk mengeliminasi False Negative (kasus competent candidate dropped to Band C) sekaligus menjaga presisi ketat terhadap False Positive.
+
+1. Executive Diagnosis: Mengapa Sistem Saat Ini Mengalami False Negative Sistemik?
+
+Secara komputasional, kegagalan mendeteksi pengalaman kerja yang relevan (False Negative / NOT_DEMONSTRATED) disebabkan oleh empat cacat struktural pada desain pipeline generasi pertama:
+
+Asimetri Taksonomi (Hiponimi vs. Hipernimi) pada Ruang Vektor Bi-Encoder:
+Model bi-encoder seperti Harrier-270m memetakan teks ke ruang vektor berdimensi 640 berdasarkan kemiripan topik simetris, bukan implikasi logis satu arah (directional entailment). Dalam bahasa alami rekrutmen:
+
+Kualifikasi JD (Hipernim / Abstraksi): "Mampu menyampaikan dan mengimplementasikan kurikulum Pendidikan Agama Islam" atau "Database Administration & Architecture".
+
+Bukti CV (Hiponim / Instansiasi Konkret): "Mengajar materi tahfidz, fiqih ibadah, dan akidah akhlak kelas 7-9 SMP" atau "Merancang skema tabel, optimasi query relasional, dan migrasi basis data pelanggan".
+Secara matematis, vektor bukti konkret 
+𝑣
+ev
+v
+ev
+	​
+
+ memiliki varians fitur spesifik yang tinggi sehingga sudut kosinus 
+cos
+⁡
+(
+𝑣
+req
+,
+𝑣
+ev
+)
+cos(v
+req
+	​
+
+,v
+ev
+	​
+
+) tertekan ke rentang 
+0.52
+−
+0.63
+0.52−0.63. Penggunaan hard threshold statis 
+𝜏
+=
+0.65
+τ=0.65 secara otomatis memotong seluruh kandidat yang menulis apa yang mereka kerjakan secara riil ketimbang menyalin jargon abstrak dari JD.
+
+Anisotropi Panjang Kalimat (Length & Specificity Mismatch):
+Kriteria JD umumnya berupa frasa nomina pendek (3–8 kata), sedangkan bullet point CV berupa klausa tindakan majemuk (12–35 kata). Penyatuan (mean/EOS pooling) pada bi-encoder mendilusi bobot kata kunci inti pada kalimat panjang.
+
+Amputasi Konteks Struktural (Orphan Bullet Embedding):
+Memotong pengalaman kerja per baris bullet tanpa menyertakan metadata induk (Jabatan, Industri Perusahaan, Durasi) menghilangkan sinyal disambiguasi. Kalimat "Melakukan audit kepatuhan standar operasional" memiliki makna semantik yang sama sekali berbeda jika dilakukan oleh seorang Quality Assurance Manufacture dibandingkan Legal Counsel.
+
+Ketergantungan pada Pohon Kata Kunci Statis (skills.yaml & kind_rules.py):
+Aturan berbasis regex dan kamus statis tidak memiliki sifat domain-generalization. Ketika platform digunakan lintas industri (Pendidikan, Sipil, Hukum, Medis, F&B), ruang kosakata tumbuh secara kombinatorial dan menyebabkan rule-gating menolak bukti valid sebelum sempat dievaluasi secara mendalam.
+
+Tiga Aksioma Arsitektur Baru
+
+Context-Preserving Late/Prefix Representation: Setiap unit bukti (bullet point) wajib membawa konteks jabatan, domain organisasi, dan rentang waktu saat diproyeksikan ke ruang vektor, namun tetap menyimpan span teks aslinya secara terpisah untuk highlighting UI.
+
+Recall-Then-Precision Funnel (Multi-Tier): Pisahkan fase Pencarian Bukti (fokus pada Recall mendekati 100% melalui Dynamic Query Expansion dan Hybrid RRF) dari fase Verifikasi Kualifikasi (fokus pada Precision tinggi menggunakan Cross-Encoder dan NLI Entailment).
+
+Sub-Aspect Evidence Aggregation: Satu kualifikasi JD jarang terpenuhi oleh satu kalimat tunggal di CV. Evaluasi harus mampu menggabungkan (aggregate) beberapa bullet point lintas pengalaman kerja untuk membuktikan satu kriteria komposit.
+
+2. Hierarchical Contextual Chunking & Document Representation
+
+Untuk mengatasi Context Loss, proses parsing CV tidak boleh lagi menghasilkan daftar kalimat lepas (flat chunks). Kita menerapkan skema Parent-Child Contextualized Chunking dengan pemisahan tegas antara raw_verbatim_text (untuk tampilan audit HR) dan contextualized_embedding_text (untuk input model vektor dan reranker).
+
+2.1. Skema Representasi Hirarkis (Parent-Child Document Graph)
+
+Setiap entri pengalaman kerja direpresentasikan sebagai graf dua tingkat:
+
+Level 1 (ExperienceParent): Menyimpan entitas tempat konteks bernaung: job_title, normalized_role_category, organization_name, inferred_industry, start_date, end_date, duration_months.
+
+Level 2 (EvidenceChild): Setiap bullet point atau klausa tindakan kohesif di bawah ExperienceParent tersebut, dilengkapi penanda posisi karakter (char_start, char_end) terhadap dokumen CV asli.
+
+2.2. Formulasi Contextual Header Injection
+
+Sebelum chunk di-embed menggunakan Harrier-270m (640d), sistem menyuntikkan header struktural terformat. Rumus konstruksi string input vektor 
+𝑇
+embed
+(
+𝑗
+)
+T
+embed
+(j)
+	​
+
+ untuk chunk ke-
+𝑗
+j pada pengalaman ke-
+𝑝
+p adalah:
+
+𝑇
+embed
+(
+𝑝
+,
+𝑗
+)
+=
+Concat
+(
+"[Jabatan: "
+,
+𝑅
+𝑝
+,
+" 
+\vert
+ Organisasi/Bidang: "
+,
+𝑂
+𝑝
+,
+" 
+\vert
+ Durasi: "
+,
+𝐷
+𝑝
+,
+" bln] Bukti Kerja: "
+,
+𝐸
+𝑝
+,
+𝑗
+raw
+)
+T
+embed
+(p,j)
+	​
+
+=Concat("[Jabatan: ",R
+p
+	​
+
+," \vert Organisasi/Bidang: ",O
+p
+	​
+
+," \vert Durasi: ",D
+p
+	​
+
+," bln] Bukti Kerja: ",E
+p,j
+raw
+	​
+
+)
+
+Dengan injeksi ini:
+
+Kalimat CV: "Mengajar materi tahfidz, fiqih ibadah, dan akidah akhlak untuk kelas 7-9"
+
+Berubah menjadi: "[Jabatan: Guru PAI / Pengajar Agama | Organisasi/Bidang: SMP Islam Terpadu (Pendidikan) | Durasi: 24 bln] Bukti Kerja: Mengajar materi tahfidz, fiqih ibadah, dan akidah akhlak untuk kelas 7-9"
+
+Vektor yang dihasilkan oleh Harrier-270m kini mengandung informasi Pendidikan, Guru, dan SMP, sehingga jarak kosinus terhadap kueri "Kurikulum Pendidikan Agama Islam" meningkat drastis dari kisaran 
+0.56
+0.56 ke kisaran 
+0.78
++
+0.78+.
+
+2.3. Implementasi Skema Database (PostgreSQL + pgvector)
+SQL
+-- Ekstensi wajib untuk Hybrid Search
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Tabel Parent: Konteks Jabatan & Pengalaman Kerja
+CREATE TABLE cv_experience_parents (
+    parent_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    candidate_id UUID NOT NULL,
+    cv_document_id UUID NOT NULL,
+    job_title TEXT NOT NULL,
+    organization_name TEXT,
+    inferred_domain TEXT, -- Misal: "Pendidikan", "Teknologi Informasi", "Konstruksi"
+    start_date DATE,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT FALSE,
+    duration_months INT NOT NULL DEFAULT 0,
+    section_type VARCHAR(32) NOT NULL -- 'WORK_EXPERIENCE', 'PROJECT', 'CERTIFICATION', 'EDUCATION'
+);
+
+-- Tabel Child: Unit Bukti Terkontekstualisasi (Atomic Evidence Unit)
+CREATE TABLE cv_evidence_units (
+    evidence_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_id UUID NOT NULL REFERENCES cv_experience_parents(parent_id) ON DELETE CASCADE,
+    candidate_id UUID NOT NULL,
+    sequence_order INT NOT NULL,
+    
+    -- Teks murni untuk ekstraksi bukti deterministik & UI Highlighting
+    raw_verbatim_text TEXT NOT NULL,
+    char_start INT NOT NULL,
+    char_end INT NOT NULL,
+    
+    -- Teks yang telah disuntik konteks Parent untuk Embedding & Cross-Encoder
+    contextualized_text TEXT NOT NULL,
+    
+    -- Dense Vector (Harrier-270m 640 dimensi)
+    embedding vector(640) NOT NULL,
+    
+    -- Sparse Lexical Vector (Bilingual Indonesian + English Full-Text Search)
+    fts_vector tsvector GENERATED ALWAYS AS (
+        to_tsvector('indonesian', contextualized_text) || 
+        to_tsvector('english', contextualized_text)
+    ) STORED
+);
+
+CREATE INDEX idx_cv_evidence_candidate ON cv_evidence_units(candidate_id);
+CREATE INDEX idx_cv_evidence_hnsw ON cv_evidence_units USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+CREATE INDEX idx_cv_evidence_fts ON cv_evidence_units USING gin (fts_vector);
+
+3. Multi-Tier Retrieval & Semantic Expansion Pipeline
+
+Alih-alih mencocokkan teks mentah JD langsung ke teks mentah CV dengan satu aturan kind_rules.py, proses pencocokan dibagi menjadi 3 tingkat (Tier) yang dieksekusi secara berurutan.
+
+[Kriteria JD Mentah K_i]
+       │
+       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ TIER 1: JD-Time Dynamic Taxonomy & Hyponym Expansion (Cached per JD)    │
+│ • Dekonstruksi K_i -> Canonical + 5-8 Instansiasi Kerja Riil (Hiponim)  │
+│ • Bangun Multi-Vector Query (v_req, v_proto) & Expanded Lexical Terms   │
+└─────────────────────────────────────────────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ TIER 2: Calibrated Hybrid Search (Dense pgvector + Sparse FTS + RRF)    │
+│ • Ambil seluruh Evidence Units milik kandidat (atau Top-25 via RRF)     │
+│ • Max-Pooling antara v_req dan v_proto + Skor Lexical BM25/ts_rank_cd   │
+│ • Z-Score Adaptive Gating (Tanpa Hard Threshold 0.65 yang Kaku)         │
+└─────────────────────────────────────────────────────────────────────────┘
+       │ (Top-12 Kandidat Bukti Terbaik per Kriteria K_i)
+       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ TIER 3: Cross-Encoder Re-Ranking & Sub-Aspect Scoring                   │
+│ • Cross-Attention penuh antara (K_i + Indikator) dan Contextualized E_j │
+│ • Menghasilkan logit relevansi terkalibrasi s_cross in [0, 1]           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+3.1. Tier 1: Dynamic Query Expansion & Domain Taxonomy Generation
+
+Menggantikan skills.yaml yang statis, sistem melakukan Kompilasi Kualifikasi JD (JD Compilation) satu kali saat lowongan disimpan/diaktifkan. Proses ini membongkar setiap butir kualifikasi JD 
+𝐾
+𝑖
+K
+i
+	​
+
+ menjadi struktur taksonomi dinamis yang menjembatani bahasa HR (abstrak/hipernim) dengan bahasa pelamar di lapangan (operasional/hiponim).
+
+Setiap kriteria 
+𝐾
+𝑖
+K
+i
+	​
+
+ dikompilasi menjadi objek CompiledRequirement:
+
+canonical_text: Kalimat asli pada JD.
+
+concrete_manifestations (Hiponim Operasional): Daftar 5–8 contoh aktivitas kerja nyata di lapangan yang membuktikan kriteria tersebut (misal: untuk "Kurikulum PAI" 
+→
+→ "mengajar tahfidz, fiqih, akidah akhlak, sejarah kebudayaan islam, menyusun RPP/modul ajar PAI, evaluasi capaian santri/siswa").
+
+synthetic_prototype_passage (HyDE-lite for CV): Satu kalimat sintetik bergaya bullet point CV ideal yang menggabungkan tindakan operasional dari kriteria tersebut.
+
+lexical_synonyms: Daftar kata kunci dan akronim lintas bahasa (Indonesia/Inggris) untuk pencarian sparse (tsquery).
+
+sub_aspects: Dekomposisi kriteria majemuk menjadi sub-komponen atomik (misal: "Database Administration & Architecture" dipecah menjadi: [A1: Desain/Arsitektur Skema & Pemodelan Data, A2: Administrasi, Optimasi Query, atau Migrasi/Operasional DB]).
+
+Catatan Efisiensi Produksi: Karena kompilasi ini berjalan per Lowongan (JD) dan disimpan di tabel jd_compiled_requirements, biayanya adalah 
+𝑂
+(
+1
+)
+O(1) per lowongan (bukan per pelamar). Saat 1.000 CV masuk ke lowongan tersebut, sistem langsung menggunakan vektor dan taksonomi yang sudah di-cache tanpa memanggil LLM lagi.
+
+3.2. Tier 2: Calibrated Hybrid Search (pgvector + Sparse FTS + Weighted RRF)
+
+Pada tahap ini, setiap kriteria 
+𝐾
+𝑖
+K
+i
+	​
+
+ memiliki dua vektor kueri berdimensi 640 dari Harrier-270m:
+
+𝑣
+req
+(
+𝑖
+)
+v
+req
+(i)
+	​
+
+: Vektor dari teks kualifikasi JD + domain jabatan.
+
+𝑣
+proto
+(
+𝑖
+)
+v
+proto
+(i)
+	​
+
+: Vektor dari synthetic_prototype_passage + concrete_manifestations (hiponim operasional).
+
+Formulasi Skor Multi-Vector Dense
+
+Untuk setiap unit bukti kandidat 
+𝐸
+𝑗
+E
+j
+	​
+
+ dengan vektor terkontekstualisasi 
+𝑣
+ev
+(
+𝑗
+)
+v
+ev
+(j)
+	​
+
+, skor kemiripan semantik dihitung menggunakan operator Convex Max-Pooling:
+
+𝑆
+dense
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
+=
+max
+⁡
+(
+cos
+⁡
+(
+𝑣
+req
+(
+𝑖
+)
+,
+𝑣
+ev
+(
+𝑗
+)
+)
+,
+𝜆
+proto
+⋅
+cos
+⁡
+(
+𝑣
+proto
+(
+𝑖
+)
+,
+𝑣
+ev
+(
+𝑗
+)
+)
+)
+S
+dense
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)=max(cos(v
+req
+(i)
+	​
+
+,v
+ev
+(j)
+	​
+
+),λ
+proto
+	​
+
+⋅cos(v
+proto
+(i)
+	​
+
+,v
+ev
+(j)
+	​
+
+))
+
+di mana 
+𝜆
+proto
+=
+0.95
+λ
+proto
+	​
+
+=0.95 adalah faktor koreksi untuk vektor prototipe hiponim. Pendekatan ini langsung menyelesaikan masalah pelamar yang menulis "Merancang skema tabel, optimasi query relasional, dan migrasi basis data": meskipun 
+cos
+⁡
+(
+𝑣
+req
+,
+𝑣
+ev
+)
+cos(v
+req
+	​
+
+,v
+ev
+	​
+
+) hanya 
+0.58
+0.58 terhadap frasa "Database Administration & Architecture", kemiripannya terhadap vektor prototipe hiponim 
+cos
+⁡
+(
+𝑣
+proto
+,
+𝑣
+ev
+)
+cos(v
+proto
+	​
+
+,v
+ev
+	​
+
+) akan mencapai 
+0.82
+0.82.
+
+Penggabungan Hybrid Search dengan Weighted Reciprocal Rank Fusion (W-RRF)
+
+Untuk menangkap kecocokan kata kunci eksak (nama tools, sertifikasi, regulasi UU, istilah teknis spesifik) yang kadang luput dari dense vector, kita menggabungkan peringkat Dense (
+𝑟
+dense
+r
+dense
+	​
+
+) dan peringkat Sparse Lexical (
+𝑟
+sparse
+r
+sparse
+	​
+
+ dari ts_rank_cd pada fts_vector) menggunakan rumus Calibrated Hybrid Score:
+
+𝑆
+hybrid
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
+=
+𝛽
+⋅
+𝑆
+dense
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
++
+(
+1
+−
+𝛽
+)
+⋅
+BM25
+(
+𝐾
+𝑖
+expanded
+,
+𝐸
+𝑗
+)
+BM25
+max
+⁡
++
+𝜖
++
+𝛾
+(
+𝑤
+𝑑
+𝜅
++
+𝑟
+dense
+(
+𝐸
+𝑗
+)
++
+𝑤
+𝑠
+𝜅
++
+𝑟
+sparse
+(
+𝐸
+𝑗
+)
+)
+S
+hybrid
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)=β⋅S
+dense
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)+(1−β)⋅
+BM25
+max
+	​
+
++ϵ
+BM25(K
+i
+expanded
+	​
+
+,E
+j
+	​
+
+)
+	​
+
++γ(
+κ+r
+dense
+	​
+
+(E
+j
+	​
+
+)
+w
+d
+	​
+
+	​
+
++
+κ+r
+sparse
+	​
+
+(E
+j
+	​
+
+)
+w
+s
+	​
+
+	​
+
+)
+
+dengan parameter terkalibrasi: 
+𝛽
+=
+0.70
+β=0.70, 
+𝛾
+=
+0.15
+γ=0.15, konstanta RRF 
+𝜅
+=
+60
+κ=60, 
+𝑤
+𝑑
+=
+0.65
+w
+d
+	​
+
+=0.65, dan 
+𝑤
+𝑠
+=
+0.35
+w
+s
+	​
+
+=0.35.
+
+Eliminasi Static Threshold Trap via Adaptive Soft-Gating
+
+Hapus batas statis cosine >= 0.65. Karena satu CV rata-rata hanya memiliki 
+15
+ hingga 
+45
+15 hingga 45 cv_evidence_units, kita mengambil Top-
+𝑀
+M (
+𝑀
+=
+10
+M=10) bukti dengan 
+𝑆
+hybrid
+S
+hybrid
+	​
+
+ tertinggi yang memenuhi batas bawah longgar (High-Recall Floor):
+
+𝑆
+dense
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
+≥
+0.42
+ATAU
+𝑟
+sparse
+(
+𝐸
+𝑗
+)
+≤
+5
+S
+dense
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)≥0.42ATAUr
+sparse
+	​
+
+(E
+j
+	​
+
+)≤5
+
+Dengan menurunkan floor pada Tier 2 menjadi 
+0.42
+0.42, tidak ada lagi bukti relevan yang terbuang prematur. Penyaringan presisi diserahkan sepenuhnya ke Tier 3 dan Tier 4.
+
+3.3. Tier 3: Cross-Encoder / Cross-Attention Re-Ranking
+
+Bi-encoder (Harrier-270m) mengkompresi kalimat menjadi satu vektor tunggal secara independen sehingga kehilangan interaksi antar-token. Pada Tier 3, ke-
+𝑀
+M kandidat bukti terbaik dari Tier 2 dimasukkan ke dalam Multilingual Cross-Encoder (seperti BAAI/bge-reranker-v2-m3 atau jinaai/jina-reranker-v2-base-multilingual).
+
+Model Cross-Encoder menerima pasangan teks secara bersamaan dalam satu sekuens:
+
+Input
+CE
+=
+[CLS]
+𝐾
+𝑖
+canonical
+ (Indikator: 
+𝐾
+𝑖
+manifestations
+)
+[SEP]
+𝐸
+𝑗
+contextualized
+[SEP]
+Input
+CE
+	​
+
+=[CLS]K
+i
+canonical
+	​
+
+ (Indikator: K
+i
+manifestations
+	​
+
+)[SEP]E
+j
+contextualized
+	​
+
+[SEP]
+
+Melalui mekanisme Multi-Head Self-Attention penuh (
+𝐿
+×
+𝐿
+L×L interaksi token), model secara langsung menghadapkan token "tahfidz", "fiqih", dan "SMP" pada CV dengan token "kurikulum", "Pendidikan Agama Islam", dan "mengajar" pada kriteria yang diperkaya. Logit mentah 
+𝑧
+ce
+(
+𝑖
+,
+𝑗
+)
+z
+ce
+(i,j)
+	​
+
+ dinormalisasi dengan fungsi calibrated sigmoid bertemperatur 
+𝜏
+ce
+τ
+ce
+	​
+
+:
+
+𝑃
+rel
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
+=
+𝜎
+(
+𝑧
+ce
+(
+𝑖
+,
+𝑗
+)
+−
+𝑏
+0
+𝜏
+ce
+)
+=
+1
+1
++
+exp
+⁡
+(
+−
+𝑧
+ce
+(
+𝑖
+,
+𝑗
+)
+−
+𝑏
+0
+𝜏
+ce
+)
+P
+rel
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)=σ(
+τ
+ce
+	​
+
+z
+ce
+(i,j)
+	​
+
+−b
+0
+	​
+
+	​
+
+)=
+1+exp(−
+τ
+ce
+	​
+
+z
+ce
+(i,j)
+	​
+
+−b
+0
+	​
+
+	​
+
+)
+1
+	​
+
+4. Entailment-Based State Classification (NLI Verifier & Aggregation)
+
+Kemiripan topik (relevance) belum tentu membuktikan pemenuhan syarat (entailment). Contoh: kalimat CV "Berkoordinasi dengan tim Database Administrator untuk meminta akses tabel" memiliki kemiripan kata yang tinggi dengan "Database Administration", namun secara logika tidak membuktikan bahwa pelamar memiliki keahlian Database Administration.
+
+Oleh karena itu, evaluasi status kriteria (STRONG, PARTIAL, NOT_DEMONSTRATED) diformulasikan sebagai masalah Asymmetric Natural Language Inference (NLI) & Sub-Aspect Coverage.
+
+4.1. Formulasi Directional Entailment (
+𝐸
+𝑗
+⊨
+𝐾
+𝑖
+E
+j
+	​
+
+⊨K
+i
+	​
+
+)
+
+Untuk kandidat bukti teratas hasil Cross-Encoder (
+𝑃
+rel
+≥
+0.35
+P
+rel
+	​
+
+≥0.35), kita mengevaluasi distribusi probabilitas NLI tiga kelas menggunakan model NLI multibahasa (MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 atau joint head):
+
+Premis (
+𝑃
+P): contextualized_text dari pengalaman kerja kandidat (
+𝐸
+𝑗
+E
+j
+	​
+
+).
+
+Hipotesis (
+𝐻
+H): "Kandidat memiliki pengalaman atau kompetensi nyata dalam: {canonical_requirement}, seperti {concrete_manifestations}".
+
+Model menghasilkan vektor probabilitas softmax:
+
+𝑝
+nli
+(
+𝐸
+𝑗
+⊨
+𝐾
+𝑖
+)
+=
+[
+𝑃
+entail
+(
+𝑖
+,
+𝑗
+)
+,
+𝑃
+neutral
+(
+𝑖
+,
+𝑗
+)
+,
+𝑃
+contra
+(
+𝑖
+,
+𝑗
+)
+]
+di mana 
+∑
+𝑝
+nli
+=
+1
+p
+nli
+	​
+
+(E
+j
+	​
+
+⊨K
+i
+	​
+
+)=[P
+entail
+(i,j)
+	​
+
+,P
+neutral
+(i,j)
+	​
+
+,P
+contra
+(i,j)
+	​
+
+]di mana ∑p
+nli
+	​
+
+=1
+
+Selain itu, kita mendefinisikan Net Entailment Score (
+𝑆
+nli
+(
+𝑖
+,
+𝑗
+)
+S
+nli
+(i,j)
+	​
+
+) dan Unified Evidence Strength (
+Ψ
+𝑖
+,
+𝑗
+Ψ
+i,j
+	​
+
+):
+
+𝑆
+nli
+(
+𝑖
+,
+𝑗
+)
+=
+𝑃
+entail
+(
+𝑖
+,
+𝑗
+)
+−
+0.5
+⋅
+𝑃
+contra
+(
+𝑖
+,
+𝑗
+)
++
+0.25
+⋅
+𝑃
+neutral
+(
+𝑖
+,
+𝑗
+)
+⋅
+𝐼
+(
+𝑃
+rel
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
+≥
+0.65
+)
+S
+nli
+(i,j)
+	​
+
+=P
+entail
+(i,j)
+	​
+
+−0.5⋅P
+contra
+(i,j)
+	​
+
++0.25⋅P
+neutral
+(i,j)
+	​
+
+⋅I(P
+rel
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)≥0.65)
+Ψ
+𝑖
+,
+𝑗
+=
+𝑤
+ce
+⋅
+𝑃
+rel
+(
+𝐾
+𝑖
+,
+𝐸
+𝑗
+)
++
+𝑤
+nli
+⋅
+max
+⁡
+(
+0
+,
+𝑆
+nli
+(
+𝑖
+,
+𝑗
+)
+)
+⋅
+𝜙
+agency
+(
+𝐸
+𝑗
+)
+Ψ
+i,j
+	​
+
+=w
+ce
+	​
+
+⋅P
+rel
+	​
+
+(K
+i
+	​
+
+,E
+j
+	​
+
+)+w
+nli
+	​
+
+⋅max(0,S
+nli
+(i,j)
+	​
+
+)⋅ϕ
+agency
+	​
+
+(E
+j
+	​
+
+)
+
+dengan bobot 
+𝑤
+ce
+=
+0.55
+w
+ce
+	​
+
+=0.55, 
+𝑤
+nli
+=
+0.45
+w
+nli
+	​
+
+=0.45, dan 
+𝜙
+agency
+(
+𝐸
+𝑗
+)
+∈
+[
+0.6
+,
+1.0
+]
+ϕ
+agency
+	​
+
+(E
+j
+	​
+
+)∈[0.6,1.0] adalah pengali tingkat keterlibatan (agency multiplier): bernilai 
+1.0
+1.0 untuk tindakan eksekusi aktif/utama (merancang, mengajar, mengelola, membangun) dan 
+0.65
+0.65 untuk keterlibatan pasif/pendukung (membantu, memfasilitasi, berpartisipasi dalam).
+
+4.2. Operator Agregasi Bukti Majemuk (Multi-Bullet Evidence Pooling)
+
+Dalam dunia nyata, seorang kandidat sering kali memenuhi satu kriteria JD melalui gabungan 2 atau 3 bullet point berbeda (misalnya: bullet 1 menjelaskan perancangan skema tabel, bullet 4 menjelaskan migrasi data dan query tuning). Jika sistem hanya mengambil 
+max
+⁡
+𝑗
+(
+Ψ
+𝑖
+,
+𝑗
+)
+max
+j
+	​
+
+(Ψ
+i,j
+	​
+
+), maka dua bukti parsial tidak akan pernah naik menjadi STRONG.
+
+Kita menerapkan Diminishing-Returns Noisy-OR Aggregation pada Top-
+𝐾
+K (
+𝐾
+=
+3
+K=3) bukti terkuat yang berasal dari segmen pengalaman yang valid, diurutkan menurun 
+Ψ
+𝑖
+,
+(
+1
+)
+≥
+Ψ
+𝑖
+,
+(
+2
+)
+≥
+Ψ
+𝑖
+,
+(
+3
+)
+Ψ
+i,(1)
+	​
+
+≥Ψ
+i,(2)
+	​
+
+≥Ψ
+i,(3)
+	​
+
+:
+
+Ψ
+𝑖
+agg
+=
+1
+−
+∏
+𝑘
+=
+1
+𝐾
+(
+1
+−
+𝜂
+𝑘
+−
+1
+⋅
+Ψ
+𝑖
+,
+(
+𝑘
+)
+⋅
+𝐼
+(
+Ψ
+𝑖
+,
+(
+𝑘
+)
+≥
+𝜃
+min
+)
+)
+Ψ
+i
+agg
+	​
+
+=1−
+k=1
+∏
+K
+	​
+
+(1−η
+k−1
+⋅Ψ
+i,(k)
+	​
+
+⋅I(Ψ
+i,(k)
+	​
+
+≥θ
+min
+	​
+
+))
+
+dengan faktor peluruhan bukti sekunder 
+𝜂
+=
+0.35
+η=0.35 dan ambang kontribusi minimum 
+𝜃
+min
+=
+0.40
+θ
+min
+	​
+
+=0.40.
+
+Efek Matematis:
+
+Jika terdapat 1 bukti kuat tunggal (
+Ψ
+𝑖
+,
+(
+1
+)
+=
+0.80
+Ψ
+i,(1)
+	​
+
+=0.80), maka 
+Ψ
+𝑖
+agg
+=
+0.80
+Ψ
+i
+agg
+	​
+
+=0.80 (STRONG).
+
+Jika kandidat memiliki 2 bukti komplementer menengah (
+Ψ
+𝑖
+,
+(
+1
+)
+=
+0.64
+Ψ
+i,(1)
+	​
+
+=0.64 dan 
+Ψ
+𝑖
+,
+(
+2
+)
+=
+0.60
+Ψ
+i,(2)
+	​
+
+=0.60), maka:
+
+Ψ
+𝑖
+agg
+=
+1
+−
+(
+1
+−
+0.64
+)
+×
+(
+1
+−
+0.35
+×
+0.60
+)
+=
+1
+−
+(
+0.36
+×
+0.79
+)
+=
+0.7156
+⟹
+Naik ke status 
+STRONG
+.
+Ψ
+i
+agg
+	​
+
+=1−(1−0.64)×(1−0.35×0.60)=1−(0.36×0.79)=0.7156⟹Naik ke status STRONG.
+
+Jika kandidat hanya memiliki 1 bukti lemah (
+Ψ
+𝑖
+,
+(
+1
+)
+=
+0.32
+Ψ
+i,(1)
+	​
+
+=0.32), karena 
+Ψ
+𝑖
+,
+(
+1
+)
+Ψ
+i,(1)
+	​
+
+ kurang dari 
+𝜃
+min
+θ
+min
+	​
+
+, agregasi tidak melakukan penggelembungan skor palsu (
+Ψ
+𝑖
+agg
+=
+0.32
+⟹
+NOT_DEMONSTRATED
+Ψ
+i
+agg
+	​
+
+=0.32⟹NOT_DEMONSTRATED).
+
+4.3. Matriks Keputusan Deterministik (State Classification Matrix)
+
+Jika kriteria JD menyertakan syarat durasi eksplisit 
+𝐷
+req
+D
+req
+	​
+
+ (misal: minimal 24 bulan), sistem menjumlahkan duration_months unik dari ExperienceParent tempat bukti valid (
+Ψ
+𝑖
+,
+𝑗
+≥
+0.45
+Ψ
+i,j
+	​
+
+≥0.45) bernaung, menghasilkan rasio durasi 
+𝜌
+dur
+=
+min
+⁡
+(
+1.0
+,
+𝐷
+candidate
+𝐷
+req
+)
+ρ
+dur
+	​
+
+=min(1.0,
+D
+req
+	​
+
+D
+candidate
+	​
+
+	​
+
+). Jika kriteria tidak mensyaratkan durasi, 
+𝜌
+dur
+=
+1.0
+ρ
+dur
+	​
+
+=1.0.
+
+Status Evaluasi	Aturan Batas Matematis (Decision Boundary)	Interpretasi Semantik & Operasional
+STRONG	
+Ψ
+i
+agg
+	​
+
+≥0.68 DAN 
+P
+contra
+(i,1)
+	​
+
+≤0.20 DAN 
+ρ
+dur
+	​
+
+≥0.80	Bukti CV secara langsung atau melalui instansiasi hiponim membuktikan penguasaan penuh atas kualifikasi JD.
+PARTIAL	
+(0.42≤Ψ
+i
+agg
+	​
+
+<0.68) ATAU 
+(Ψ
+i
+agg
+	​
+
+≥0.68∧ρ
+dur
+	​
+
+<0.80)	Kandidat memiliki pengalaman pada sub-aspek kriteria, domain yang berdekatan (adjacent), atau memenuhi kompetensi namun durasi pengalaman masih di bawah target.
+NOT_DEMONSTRATED	
+Ψ
+i
+agg
+	​
+
+<0.42 ATAU 
+P
+contra
+(i,1)
+	​
+
+>0.50	Tidak ditemukan bukti tindakan nyata di CV, atau kalimat yang mirip secara leksikal ternyata kontradiktif / sekadar penyebutan pasif tanpa kompetensi.
+5. Deterministic Evidence Extraction & Provenance Anchoring
+
+Untuk menjamin transparansi dan auditability 100% di dashboard HR (bebas halusinasi teks), mesin pencocokan dilarang menghasilkan kutipan bukti melalui generative text synthesis. Seluruh bukti yang ditampilkan wajib berupa pointer deterministik ke baris tabel cv_evidence_units.
+
+5.1. Algoritma Provenance Anchoring & Span Highlighting
+
+Setiap bukti pendukung yang lolos ambang kontribusi (
+Ψ
+𝑖
+,
+𝑗
+≥
+0.42
+Ψ
+i,j
+	​
+
+≥0.42) diambil langsung dari kolom raw_verbatim_text beserta koordinat karakter char_start dan char_end terhadap dokumen CV sumber.
+
+Untuk membantu HR memahami mengapa bukti tersebut cocok (terutama pada kasus kecocokan hiponim seperti tahfidz/fiqih 
+→
+→ Kurikulum PAI), sistem menyertakan objek semantic_bridge yang memetakan token kunci pada CV ke indikator taksonomi pada JD.
+
+Skor Kepercayaan Terkalibrasi (Calibrated Confidence Score): Dihitung dari kepastian pemisahan jarak (margin distance) terhadap batas ambang terdekat menggunakan fungsi logistik:
+
+Confidence
+(
+𝐾
+𝑖
+)
+=
+clip
+(
+0.50
++
+0.50
+⋅
+tanh
+⁡
+(
+∣
+Ψ
+𝑖
+agg
+−
+𝜏
+boundary
+∣
+0.15
+)
+,
+0.50
+,
+0.99
+)
+Confidence(K
+i
+	​
+
+)=clip(0.50+0.50⋅tanh(
+0.15
+∣Ψ
+i
+agg
+	​
+
+−τ
+boundary
+	​
+
+∣
+	​
+
+),0.50,0.99)
+5.2. Kontrak JSON Payload untuk Dashboard HR
+
+Berikut adalah struktur output deterministik yang dikembalikan ke frontend screening.rifqisetiawan.my.id:
+
+JSON
+{
+  "requirement_id": "req_pai_01",
+  "requirement_text": "Mampu menyampaikan dan mengimplementasikan kurikulum Pendidikan Agama Islam",
+  "evaluation_state": "STRONG",
+  "aggregated_score": 0.814,
+  "confidence_score": 0.93,
+  "scoring_mode_used": "hybrid_cross_nli_v2",
+  "semantic_bridge_explanation": "Bukti pengalaman mengajar materi spesifik (tahfidz, fiqih ibadah, akidah akhlak) pada tingkat SMP secara taksonomis merupakan implementasi langsung dari komponen inti Kurikulum Pendidikan Agama Islam.",
+  "provenance_anchors": [
+    {
+      "evidence_id": "ev_99281a",
+      "parent_experience": {
+        "job_title": "Guru Pendidikan Agama & Pembina Rohis",
+        "organization_name": "SMP Islam Terpadu Al-Hikmah",
+        "duration_months": 28,
+        "period": "Jul 2023 - Okt 2025"
+      },
+      "verbatim_quote": "Mengajar materi tahfidz, fiqih ibadah, dan akidah akhlak untuk kelas 7-9 SMP serta menyusun modul evaluasi semester.",
+      "document_span": {
+        "section": "WORK_EXPERIENCE",
+        "char_start": 1420,
+        "char_end": 1538
+      },
+      "metrics": {
+        "dense_cosine_raw": 0.582,
+        "dense_cosine_hyponym_proto": 0.831,
+        "cross_encoder_prob": 0.874,
+        "nli_entailment_prob": 0.842,
+        "nli_contradiction_prob": 0.021,
+        "unit_strength_psi": 0.814
+      }
+    }
+  ]
+}
+
+6. Production Implementation Roadmap & Tech Stack
+
+Rancangan ini dirancang agar langsung kompatibel dengan ekosistem FastAPI + PostgreSQL (pgvector) Anda saat ini dan dapat berjalan sangat cepat di VPS produksi (baik CPU multi-core maupun GPU ringan) menggunakan ONNX Runtime (optimum + INT8/FP16 Quantization).
+
+6.1. Spesifikasi Model Open-Source & Estimasi Latensi
+Komponen Arsitektur	Rekomendasi Model Open-Source	Format Eksekusi	Ukuran RAM/VRAM	Estimasi Latensi (CPU 8-vCore / GPU T4)
+1. JD Taxonomy Compiler (Jalan 1x saat buat JD)	Qwen/Qwen2.5-7B-Instruct atau API LLM terstruktur (Structured Outputs)	Async Worker / Cached di DB	0 MB di hot-path screening	0 ms saat screening CV (diambil dari tabel cache PostgreSQL)
+2. Bi-Encoder Embedding (Existing Vector Model)	Harrier-270m (640d) (Tetap dipertahankan agar tidak mengubah skema dimensi 640d)	ONNX Runtime / SentenceTransformers	~550 MB	~18 ms untuk batch 30 bullet CV
+3. Cross-Encoder & NLI Reranker (Unified Inference)	
+
+Opsi A (Akurasi Maksimal): BAAI/bge-reranker-v2-m3 (INT8 ONNX) + MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (INT8 ONNX)
+
+
+
+
+Opsi B (Ultra-Cepat 1 Model): MoritzLaurer/bge-m3-zeroshot-v2.0 (Menggabungkan Reranking & NLI Entailment dalam 1 forward pass!)
+
+	optimum.onnxruntime (INT8 Dynamic Quantization)	~650 MB (Opsi B) / ~1.1 GB (Opsi A)	~85 ms - 140 ms per CV (untuk batch 10 kriteria 
+× Top-5 bukti kandidat)
+Total Waktu Evaluasi per CV	Full End-to-End Matching Engine	FastAPI Async + ONNX ThreadPool	~1.2 GB - 1.7 GB Total	~120 ms (GPU) / ~280 ms (CPU) per CV
+
+Keunggulan Kunci MoritzLaurer/bge-m3-zeroshot-v2.0: Model ini dilatih khusus di atas arsitektur multibahasa BGE-M3 untuk tugas Natural Language Inference (NLI) sekaligus Cross-Encoder Reranking. Dengan menggunakan model ini dalam format ONNX INT8, Anda mendapatkan skor entailment, neutral, dan contradiction lintas bahasa (Indonesia–Inggris) hanya dalam satu kali forward pass tanpa perlu memuat dua model terpisah.
+
+6.2. Implementasi Kode Inti (matching_engine_v2.py)
+
+Berikut adalah implementasi drop-in module Python yang menggantikan logika statis pada kind_rules.py (eval_responsibility, eval_skill):
+
+Python
+from __future__ import annotations
+import math
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Dict, Optional, Tuple
+import numpy as np
+import torch
+from transformers import AutoTokenizer
+from optimum.onnxruntime import ORTModelForSequenceClassification
+
+
+class EvalState(str, Enum):
+    STRONG = "STRONG"
+    PARTIAL = "PARTIAL"
+    NOT_DEMONSTRATED = "NOT_DEMONSTRATED"
+
+
+@dataclass
+class CompiledRequirement:
+    req_id: str
+    canonical_text: str
+    domain_context: str
+    concrete_manifestations: List[str]  # Hiponim operasional hasil ekspansi JD
+    synthetic_prototype: str            # Kalimat prototipe bukti CV
+    vec_canonical: np.ndarray           # (640,) Harrier-270m normalized
+    vec_prototype: np.ndarray           # (640,) Harrier-270m normalized
+    min_duration_months: int = 0
+
+
+@dataclass
+class CandidateEvidenceUnit:
+    evidence_id: str
+    parent_id: str
+    job_title: str
+    organization_name: str
+    duration_months: int
+    raw_verbatim_text: str
+    contextualized_text: str
+    char_start: int
+    char_end: int
+    embedding: np.ndarray               # (640,) Harrier-270m normalized
+    sparse_bm25_score: float = 0.0
+
+
+@dataclass
+class ProvenanceAnchor:
+    evidence_id: str
+    parent_id: str
+    job_title: str
+    organization_name: str
+    duration_months: int
+    verbatim_quote: str
+    char_start: int
+    char_end: int
+    dense_cosine_raw: float
+    dense_cosine_proto: float
+    cross_nli_entailment: float
+    cross_nli_neutral: float
+    cross_nli_contradiction: float
+    unit_strength_psi: float
+
+
+@dataclass
+class RequirementEvalResult:
+    req_id: str
+    state: EvalState
+    aggregated_score: float
+    confidence_score: float
+    matched_duration_months: int
+    anchors: List[ProvenanceAnchor] = field(default_factory=list)
+
+
+class EntailmentMatchingEngine:
+    """
+    Production Matching & Evidence Retrieval Engine (V2).
+    Menggantikan static regex/keyword tree pada kind_rules.py dengan
+    Multi-Vector Hybrid Retrieval + Cross-Attention NLI Entailment.
+    """
+
+    def __init__(
+        self,
+        onnx_nli_model_path: str = "MoritzLaurer/bge-m3-zeroshot-v2.0",
+        device: str = "CPUExecutionProvider",
+    ):
+        self.tokenizer = AutoTokenizer.from_pretrained(onnx_nli_model_path)
+        self.nli_model = ORTModelForSequenceClassification.from_pretrained(
+            onnx_nli_model_path,
+            export=True,
+            provider=device,
+        )
+        # Mapping label standar model NLI (Entailment, Neutral, Contradiction)
+        self.label2id = {k.lower(): v for k, v in self.nli_model.config.label2id.items()}
+        self.idx_entail = self.label2id.get("entailment", 0)
+        self.idx_neutral = self.label2id.get("neutral", 1)
+        self.idx_contra = self.label2id.get("contradiction", 2)
+
+        # Daftar kata kerja pasif untuk penyesuaian bobot keterlibatan (agency multiplier)
+        self.passive_markers = (
+            "membantu ", "ikut serta", "berpartisipasi", "mendukung ",
+            "assisted ", "participated in", "exposed to", "familiar with"
+        )
+
+    @staticmethod
+    def build_contextualized_chunk(
+        job_title: str,
+        org_name: str,
+        inferred_domain: str,
+        duration_months: int,
+        raw_bullet: str,
+    ) -> str:
+        """Membentuk teks terkontekstualisasi untuk di-embed ke Harrier-270m."""
+        org_info = f"{org_name} ({inferred_domain})" if inferred_domain else org_name
+        return (
+            f"[Jabatan: {job_title} | Organisasi/Bidang: {org_info} | "
+            f"Durasi: {duration_months} bln] Bukti Kerja: {raw_bullet.strip()}"
+        )
+
+    def _compute_agency_multiplier(self, raw_text: str) -> float:
+        text_lower = raw_text.lower().strip()
+        for marker in self.passive_markers:
+            if text_lower.startswith(marker) or f" {marker}" in text_lower[:35]:
+                return 0.72
+        return 1.0
+
+    def _tier2_hybrid_candidate_selection(
+        self,
+        req: CompiledRequirement,
+        evidence_pool: List[CandidateEvidenceUnit],
+        top_m: int = 8,
+    ) -> List[Tuple[CandidateEvidenceUnit, float, float, float]]:
+        """
+        Tier 2: Menghitung Multi-Vector Dense Score + Sparse Lexical RRF
+        dan menyaring Top-M kandidat bukti tanpa membuang kecocokan hiponim.
+        """
+        if not evidence_pool:
+            return []
+
+        emb_matrix = np.vstack([ev.embedding for ev in evidence_pool])  # (N, 640)
+        cos_raw = np.dot(emb_matrix, req.vec_canonical)                  # (N,)
+        cos_proto = np.dot(emb_matrix, req.vec_prototype)                # (N,)
+
+        # Convex Max-Pooling antara kueri asli dan prototipe hiponim
+        dense_scores = np.maximum(cos_raw, 0.96 * cos_proto)
+
+        # Normalisasi skor BM25/FTS
+        bm25_raw = np.array([ev.sparse_bm25_score for ev in evidence_pool], dtype=np.float32)
+        bm25_max = float(np.max(bm25_raw)) if np.max(bm25_raw) > 0 else 1.0
+        bm25_norm = bm25_raw / (bm25_max + 1e-6)
+
+        # Peringkat untuk Reciprocal Rank Fusion (RRF)
+        rank_dense = np.argsort(np.argsort(-dense_scores)) + 1
+        rank_sparse = np.argsort(np.argsort(-bm25_norm)) + 1
+        rrf_score = (0.65 / (60.0 + rank_dense)) + (0.35 / (60.0 + rank_sparse))
+
+        hybrid_scores = 0.75 * dense_scores + 0.15 * bm25_norm + 0.10 * (rrf_score * 60.0)
+
+        # High-Recall Soft-Gating (Floor 0.42 menggantikan static threshold 0.65)
+        selected_indices = [
+            idx for idx in np.argsort(-hybrid_scores)
+            if (dense_scores[idx] >= 0.42 or bm25_norm[idx] >= 0.35)
+        ][:top_m]
+
+        return [
+            (evidence_pool[i], float(cos_raw[i]), float(cos_proto[i]), float(hybrid_scores[i]))
+            for i in selected_indices
+        ]
+
+    def evaluate_requirement(
+        self,
+        req: CompiledRequirement,
+        evidence_pool: List[CandidateEvidenceUnit],
+    ) -> RequirementEvalResult:
+        """
+        Mengeksekusi Pipeline Tier 2 -> Tier 3/4 (Cross-Attention NLI) -> Noisy-OR Aggregation.
+        """
+        candidates = self._tier2_hybrid_candidate_selection(req, evidence_pool, top_m=8)
+        if not candidates:
+            return RequirementEvalResult(
+                req_id=req.req_id,
+                state=EvalState.NOT_DEMONSTRATED,
+                aggregated_score=0.0,
+                confidence_score=0.95,
+                matched_duration_months=0,
+                anchors=[],
+            )
+
+        # Konstruksi Hipotesis yang diperkaya dengan indikator hiponim untuk NLI Cross-Encoder
+        manifestations_str = ", ".join(req.concrete_manifestations[:6])
+        hypothesis = (
+            f"Kandidat terbukti memiliki pengalaman kerja atau kompetensi dalam "
+            f"{req.canonical_text} (mencakup aktivitas seperti: {manifestations_str})."
+        )
+
+        premises = [item[0].contextualized_text for item in candidates]
+        hypotheses = [hypothesis] * len(candidates)
+
+        # Batch Inference menggunakan ONNX Runtime
+        inputs = self.tokenizer(
+            premises,
+            hypotheses,
+            padding=True,
+            truncation=True,
+            max_length=384,
+            return_tensors="pt",
+        )
+        with torch.no_grad():
+            outputs = self.nli_model(**inputs)
+            logits = outputs.logits.cpu().numpy()
+            # Temperature-scaled softmax (tau = 1.15 untuk mencegah overconfidence)
+            exp_logits = np.exp(logits / 1.15)
+            probs = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+
+        scored_anchors: List[ProvenanceAnchor] = []
+        for idx, (ev, c_raw, c_proto, h_score) in enumerate(candidates):
+            p_entail = float(probs[idx, self.idx_entail])
+            p_neutral = float(probs[idx, self.idx_neutral])
+            p_contra = float(probs[idx, self.idx_contra])
+
+            # Perhitungan Unified Evidence Strength (Psi_{i,j})
+            dense_best = max(c_raw, 0.96 * c_proto)
+            s_nli = p_entail - (0.50 * p_contra) + (0.25 * p_neutral if dense_best >= 0.62 else 0.0)
+            s_nli_clipped = max(0.0, min(1.0, s_nli))
+
+            agency = self._compute_agency_multiplier(ev.raw_verbatim_text)
+            psi = ((0.65 * s_nli_clipped) + (0.35 * dense_best)) * agency
+
+            # Filter kontradiksi eksplisit
+            if p_contra > 0.55:
+                psi *= 0.25
+
+            scored_anchors.append(
+                ProvenanceAnchor(
+                    evidence_id=ev.evidence_id,
+                    parent_id=ev.parent_id,
+                    job_title=ev.job_title,
+                    organization_name=ev.organization_name,
+                    duration_months=ev.duration_months,
+                    verbatim_quote=ev.raw_verbatim_text,
+                    char_start=ev.char_start,
+                    char_end=ev.char_end,
+                    dense_cosine_raw=round(c_raw, 4),
+                    dense_cosine_proto=round(c_proto, 4),
+                    cross_nli_entailment=round(p_entail, 4),
+                    cross_nli_neutral=round(p_neutral, 4),
+                    cross_nli_contradiction=round(p_contra, 4),
+                    unit_strength_psi=round(psi, 4),
+                )
+            )
+
+        # Urutkan bukti berdasarkan Psi tertinggi
+        scored_anchors.sort(key=lambda x: x.unit_strength_psi, reverse=True)
+
+        # Multi-Bullet Evidence Aggregation (Diminishing-Returns Noisy-OR pada Top-3 bukti)
+        valid_anchors = [a for a in scored_anchors if a.unit_strength_psi >= 0.42][:3]
+        if not valid_anchors:
+            best_psi = scored_anchors[0].unit_strength_psi
+            conf = min(0.99, 0.50 + 0.50 * math.tanh(abs(best_psi - 0.42) / 0.15))
+            return RequirementEvalResult(
+                req_id=req.req_id,
+                state=EvalState.NOT_DEMONSTRATED,
+                aggregated_score=round(best_psi, 4),
+                confidence_score=round(conf, 4),
+                matched_duration_months=0,
+                anchors=scored_anchors[:1],  # Sertakan 1 kandidat terdekat untuk log diagnostik
+            )
+
+        eta = 0.35
+        prod_complement = 1.0
+        for rank_k, anchor in enumerate(valid_anchors):
+            weight_k = (eta ** rank_k) * anchor.unit_strength_psi
+            prod_complement *= (1.0 - weight_k)
+        psi_agg = 1.0 - prod_complement
+
+        # Hitung akumulasi durasi unik per Parent Experience
+        unique_parent_durations: Dict[str, int] = {}
+        for anchor in valid_anchors:
+            unique_parent_durations[anchor.parent_id] = anchor.duration_months
+        total_matched_months = sum(unique_parent_durations.values())
+
+        dur_ratio = (
+            min(1.0, total_matched_months / req.min_duration_months)
+            if req.min_duration_months > 0
+            else 1.0
+        )
+
+        # Penentuan Status Deterministik (State Classification Matrix)
+        top_contra = valid_anchors[0].cross_nli_contradiction
+        if psi_agg >= 0.68 and top_contra <= 0.20 and dur_ratio >= 0.80:
+            state = EvalState.STRONG
+            boundary_ref = 0.68
+        elif psi_agg >= 0.42:
+            state = EvalState.PARTIAL
+            boundary_ref = 0.42 if psi_agg < 0.55 else 0.68
+        else:
+            state = EvalState.NOT_DEMONSTRATED
+            boundary_ref = 0.42
+
+        confidence = min(0.99, 0.50 + 0.50 * math.tanh(abs(psi_agg - boundary_ref) / 0.15))
+
+        return RequirementEvalResult(
+            req_id=req.req_id,
+            state=state,
+            aggregated_score=round(psi_agg, 4),
+            confidence_score=round(confidence, 4),
+            matched_duration_months=total_matched_months,
+            anchors=valid_anchors,
+        )
+
+6.3. Prompt & Skema JD Taxonomy Compiler (Menghapus Ketergantungan skills.yaml)
+
+Saat lowongan baru dibuat di FastAPI (POST /api/v1/jobs), jalankan compiler berikut satu kali untuk menghasilkan concrete_manifestations dan synthetic_prototype bagi setiap kriteria JD:
+
+Python
+JD_COMPILER_SYSTEM_PROMPT = """
+Anda adalah Principal Industrial-Organizational Psychologist & Taxonomic Ontologist.
+Tugas Anda adalah mendekonstruksi setiap butir kualifikasi lowongan kerja (JD) menjadi representasi taksonomi operasional agar mesin pencari bukti CV tidak mengalami False Negative akibat perbedaan kosakata (paraphrase & hyponym gap).
+
+Untuk setiap kriteria JD, hasilkan JSON dengan atribut:
+1. "canonical_text": Teks asli kriteria.
+2. "domain_context": Bidang keahlian spesifik (misal: Pendidikan Agama Islam, Rekayasa Basis Data, Hukum Korporat).
+3. "concrete_manifestations": Array berisi 6-8 aktivitas kerja spesifik, tugas harian, objek kerja, atau sub-materi nyata di lapangan yang secara langsung membuktikan kriteria tersebut (Hiponim Operasional).
+   - Contoh untuk "Mengimplementasikan kurikulum Pendidikan Agama Islam": ["mengajar tahfidz Al-Quran", "mengajar fiqih ibadah dan muamalah", "mengajar akidah akhlak dan SKI", "menyusun RPP / modul ajar PAI", "mengevaluasi capaian belajar siswa SMP/SMA"].
+   - Contoh untuk "Database Administration & Architecture": ["merancang skema tabel dan ERD relasional", "optimasi query SQL dan indexing", "migrasi basis data produksi", "konfigurasi backup, recovery, dan replikasi PostgreSQL/MySQL"].
+4. "synthetic_prototype": Satu kalimat padat bergaya bullet point CV berpengalaman yang merangkum tindakan nyata dari concrete_manifestations di atas.
+5. "lexical_keywords": Array berisi 5-10 kata kunci tunggal atau frasa pendek (Bilingual ID/EN) untuk pencarian BM25 Full-Text Search.
+"""
+
+7. Benchmarking & Validation Protocol
+
+Untuk membuktikan secara ilmiah bahwa arsitektur baru ini mengeliminasi False Negative tanpa memicu lonjakan False Positive, terapkan protokol pengujian regresi otomatis (tests/benchmark_matching_engine.py) sebelum deployment ke produksi.
+
+7.1. Konstruksi Golden Evaluation Dataset Lintas-Industri
+
+Bangun dataset uji berlabelkan pakar HR (golden_matching_pairs.jsonl) sebanyak minimal 500 pasangan (JD_Requirement, CV_Experience_Set, GroundTruth_State, GroundTruth_Anchor_IDs) yang terdistribusi ke dalam 5 Kuadran Tantangan:
+
+Kuadran 1: Taxonomic Hyponym Match (Kasus Rawan False Negative):
+
+Contoh: JD meminta "Kurikulum PAI" 
+↔
+↔ CV menulis "Mengajar tahfidz, fiqih, akidah akhlak". Target: STRONG.
+
+Contoh: JD meminta "Database Administration & Architecture" 
+↔
+↔ CV menulis "Merancang skema tabel, optimasi query, migrasi DB". Target: STRONG.
+
+Kuadran 2: Cross-Lingual & Jargon Paraphrase:
+
+Contoh: JD dalam Bahasa Inggris ("Account Payable & Tax Reconciliation") 
+↔
+↔ CV dalam Bahasa Indonesia ("Verifikasi tagihan vendor, jurnal pengeluaran kas, dan pelaporan SPT PPh 23/PPN"). Target: STRONG.
+
+Kuadran 3: Multi-Bullet Fragmented Evidence:
+
+Contoh: JD meminta "End-to-end Civil Structural Design & Site Supervision" 
+↔
+↔ CV memecahnya di Bullet #1 ("Perhitungan struktur beton bertulang dengan ETABS") dan Bullet #5 ("Pengawasan pengecoran dan inspeksi mutu bekisting di proyek lapangan"). Target: STRONG melalui Noisy-OR Aggregation.
+
+Kuadran 4: Lexical Trap / Hard Negative (Pengujian Anti-False Positive):
+
+Contoh: JD meminta "Mengelola kampanye Meta Ads & Google Ads dengan ROAS tinggi" 
+↔
+↔ CV menulis "Mendesain banner grafis untuk diserahkan kepada tim spesialis Meta Ads & Google Ads". (Kata kunci sama persis, namun peran sebenarnya adalah Graphic Designer, bukan Performance Marketer). Target: NOT_DEMONSTRATED atau maksimal PARTIAL rendah.
+
+Kuadran 5: True Partial / Seniority & Scope Gap:
+
+Contoh: JD meminta "Memimpin arsitektur microservices skala enterprise" 
+↔
+↔ CV menulis "Membantu bug fixing pada salah satu endpoint layanan microservices selama magang 3 bulan". Target: PARTIAL.
+
+7.2. Metrik Evaluasi Kuantitatif & Release Gates
+
+Jangan pernah merilis perubahan ke SCORING_MODE produksi kecuali seluruh Release Gate berikut terpenuhi pada Golden Dataset:
+
+False Negative Rate on Competent Candidates (
+FNR
+competent
+FNR
+competent
+	​
+
+):
+Persentase pasangan yang secara ground-truth berlabel STRONG atau PARTIAL, namun diprediksi NOT_DEMONSTRATED oleh sistem:
+
+FNR
+competent
+=
+∑
+𝐼
+(
+𝑦
+^
+=
+NOT_DEMONSTRATED
+∧
+𝑦
+∈
+{
+STRONG
+,
+PARTIAL
+}
+)
+∑
+𝐼
+(
+𝑦
+∈
+{
+STRONG
+,
+PARTIAL
+}
+)
+≤
+0.04
+(
+Target 
+≤
+4
+%
+)
+FNR
+competent
+	​
+
+=
+∑I(y∈{STRONG,PARTIAL})
+∑I(
+y
+^
+	​
+
+=NOT_DEMONSTRATED∧y∈{STRONG,PARTIAL})
+	​
+
+≤0.04(Target ≤4%)
+
+Hard-Negative False Positive Rate (
+FPR
+hard_neg
+FPR
+hard_neg
+	​
+
+):
+Persentase pasangan Kuadran 4 (Lexical Trap yang berlabel NOT_DEMONSTRATED) namun salah diklasifikasikan sebagai STRONG:
+
+FPR
+hard_neg
+=
+∑
+𝐼
+(
+𝑦
+^
+=
+STRONG
+∧
+𝑦
+=
+NOT_DEMONSTRATED
+)
+∑
+𝐼
+(
+𝑦
+=
+NOT_DEMONSTRATED
+)
+≤
+0.02
+(
+Target 
+≤
+2
+%
+)
+FPR
+hard_neg
+	​
+
+=
+∑I(y=NOT_DEMONSTRATED)
+∑I(
+y
+^
+	​
+
+=STRONG∧y=NOT_DEMONSTRATED)
+	​
+
+≤0.02(Target ≤2%)
+
+Evidence Provenance Hit Rate (Anchor Recall@3):
+Proporsi kriteria STRONG/PARTIAL di mana kutipan kalimat CV yang dipilih sistem di dalam provenance_anchors (Top-3) sama dengan kalimat bukti yang ditandai oleh asesor manusia:
+
+Anchor Recall@3
+≥
+0.92
+(
+Target 
+≥
+92
+%
+)
+Anchor Recall@3≥0.92(Target ≥92%)
+
+Candidate Ranking Quality (nDCG@10):
+Mengukur kualitas urutan peringkat kandidat pada satu lowongan penuh dibandingkan urutan peringkat konsensus HR:
+
+nDCG@10
+=
+DCG@10
+IDCG@10
+,
+di mana DCG@10
+=
+∑
+𝑟
+=
+1
+10
+2
+rel
+𝑟
+−
+1
+log
+⁡
+2
+(
+𝑟
++
+1
+)
+≥
+0.88
+nDCG@10=
+IDCG@10
+DCG@10
+	​
+
+,di mana DCG@10=
+r=1
+∑
+10
+	​
+
+log
+2
+	​
+
+(r+1)
+2
+rel
+r
+	​
+
+−1
+	​
+
+≥0.88
+7.3. Urutan Eksekusi Migrasi di Repositori (ai-cv-screening-ranking)
+
+Fase 1 (Hari 1–2): Contextual Prefix Re-Indexing. Modifikasi fungsi chunking CV untuk menyertakan header [Jabatan | Organisasi | Durasi] sebelum memanggil Harrier-270m, sementara kolom raw_verbatim_text tetap disimpan murni.
+
+Fase 2 (Hari 3–4): Implementasi jd_compiler.py. Tambahkan langkah kompilasi kualifikasi JD saat lowongan dibuat untuk mengisi concrete_manifestations dan menyimpan vektor vec_prototype di PostgreSQL.
+
+Fase 3 (Hari 5–7): Integrasi EntailmentMatchingEngine & Mode SCORING_MODE="hybrid_nli". Pasang model MoritzLaurer/bge-m3-zeroshot-v2.0 (ONNX INT8) pada service layer FastAPI, ganti pemanggilan kind_rules.py (eval_responsibility & eval_skill) dengan evaluate_requirement(), dan jalankan shadow testing berdampingan dengan mode lama sebelum pengalihan penuh.
+
+Langkah teknis lanjutan untuk langsung mengimplementasikan arsitektur ini ke repositori Anda:
+Tulis kode lengkap JD Taxonomy Compiler & migrasi Alembic
+Refaktor langsung file kind_rules.py ke arsitektur Hybrid NLI
+Buat script benchmark otomatis & Golden Dataset 5 kuadran

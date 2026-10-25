@@ -1,0 +1,17 @@
+# Leadership taxonomy mapping regex verbs and title patterns (FX-31).
+
+verbs:
+  - 'memimpin\s+.*tim'
+  - 'led\s+.*team'
+  - 'lead\s+.*team'
+  - 'mentoring'
+  - 'membimbing'
+  - '\bketua\b'
+  - '\bhead\b'
+  - '\bkoordinator\b'
+
+titles:
+  - '\blead\b'
+  - '\bhead\b'
+  - '\bmanager\b'
+  - '\bsupervisor\b'

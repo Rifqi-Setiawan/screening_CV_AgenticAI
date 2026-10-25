@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "candidate_profile.schema.json",
+  "title": "CandidateProfile",
+  "description": "Profil terstruktur hasil ekstraksi satu CV. Setiap fakta membawa provenance (sumber). Field identitas HANYA ada di 'identity' dan tidak boleh disalin ke matching_profile.",
+  "type": "object",
+  "required": ["document_id", "extractor", "language", "sections", "experiences", "education", "skills", "quality"],
+  "$defs": {
+    "source": {
+      "type": "object",
+      "description": "Lokasi kutipan di dokumen asli.",
+      "required": ["page", "text"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "char_start": {"type": "integer", "minimum": 0},
+        "char_end": {"type": "integer", "minimum": 0},
+        "bbox": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+        "text": {"type": "string", "description": "Kutipan persis dari teks dokumen yang sudah dinormalisasi"},
+        "verified": {"type": "boolean", "description": "true kalau kutipan ditemukan di teks dokumen oleh kode"}
+      }
+    },
+    "date_point": {
+      "type": "object",
+      "required": ["raw"],
+      "properties": {
+        "raw": {"type": "string", "description": "Teks asli, mis. 'Maret 2022' atau 'Present'"},
+        "value": {"type": ["string", "null"], "pattern": "^(\\d{4}-\\d{2}|present)$"},
+        "precision": {"enum": ["month", "year", "unknown"]},
+        "kind": {"enum": ["FACT", "INFERENCE"], "description": "INFERENCE kalau bulan diisi dengan aturan year-only"}
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["entry_id", "title", "context"],
+      "properties": {
+        "entry_id": {"type": "string"},
+        "title": {"type": "string"},
+        "organization": {"type": ["string", "null"]},
+        "location": {"type": ["string", "null"]},
+        "start": {"$ref": "#/$defs/date_point"},
+        "end": {"$ref": "#/$defs/date_point"},
+        "context": {"enum": ["experience", "internship", "freelance", "project", "organization", "volunteer"]},
+        "employment_type": {"enum": ["full_time", "part_time", "contract", "freelance", "internship", "unknown", null]},
+        "role_family": {"type": ["string", "null"], "description": "backend, fullstack, data, qa, hr, ... (02_SCORING 4.3)"},
+        "role_family_method": {"enum": ["title_rule", "bullet_rule", "llm", null]},
+        "bullets": {"type": "array", "items": {"type": "object", "required": ["text"], "properties": {
+          "text": {"type": "string"}, "source": {"$ref": "#/$defs/source"},
+          "has_quantified_result": {"type": "boolean"}}}},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    }
+  },
+  "properties": {
+    "document_id": {"type": "string"},
+    "extractor": {"type": "object", "required": ["name", "version"], "properties": {
+      "name": {"type": "string", "description": "mis. cv-extractor"}, "version": {"type": "string"},
+      "ocr_used": {"type": "boolean"}, "layout_engine": {"type": ["string", "null"]}}},
+    "language": {"type": "array", "items": {"enum": ["id", "en", "other"]}},
+    "identity": {
+      "type": "object",
+      "description": "Disimpan terpisah (tabel candidate_identities). TIDAK dipakai untuk penilaian.",
+      "properties": {
+        "full_name": {"type": ["string", "null"]}, "email": {"type": ["string", "null"]},
+        "phone": {"type": ["string", "null"]}, "location_raw": {"type": ["string", "null"]},
+        "links": {"type": "array", "items": {"type": "string"}},
+        "other_personal": {"type": "object", "description": "Tanggal lahir, gender, agama, status, dll. bila tercantum. Hanya disimpan kalau kebijakan mengizinkan."}
+      }
+    },
+    "headline": {"type": ["string", "null"]},
+    "summary": {"type": ["string", "null"]},
+    "sections": {"type": "array", "items": {"type": "object", "required": ["type", "heading_raw"], "properties": {
+      "type": {"enum": ["summary", "experience", "projects", "organizations", "education", "certifications", "skills", "languages", "personal", "awards", "publications", "other"]},
+      "heading_raw": {"type": "string"}, "page": {"type": "integer"}, "confidence": {"type": "number"}}}},
+    "experiences": {"type": "array", "items": {"$ref": "#/$defs/entry"}},
+    "projects": {"type": "array", "items": {"$ref": "#/$defs/entry"}},
+    "organizations": {"type": "array", "items": {"$ref": "#/$defs/entry"}},
+    "education": {"type": "array", "items": {"type": "object", "required": ["degree_raw"], "properties": {
+      "degree_raw": {"type": "string"}, "level": {"enum": ["SMA", "SMK", "D1", "D2", "D3", "D4", "S1", "S2", "S3", "OTHER", null]},
+      "field_raw": {"type": ["string", "null"]}, "field_norm": {"type": ["string", "null"]},
+      "institution": {"type": ["string", "null"]}, "start": {"$ref": "#/$defs/date_point"}, "end": {"$ref": "#/$defs/date_point"},
+      "status": {"enum": ["graduated", "ongoing", "unknown"]},
+      "gpa_raw": {"type": ["string", "null"], "description": "Disimpan sebagai teks; TIDAK dipakai untuk skor"},
+      "source": {"$ref": "#/$defs/source"}}}},
+    "certifications": {"type": "array", "items": {"type": "object", "required": ["name"], "properties": {
+      "name": {"type": "string"}, "issuer": {"type": ["string", "null"]}, "issued": {"$ref": "#/$defs/date_point"},
+      "expires": {"$ref": "#/$defs/date_point"}, "concept_id": {"type": ["string", "null"]}, "source": {"$ref": "#/$defs/source"}}}},
+    "skills": {"type": "array", "description": "Semua penyebutan skill, termasuk yang ada di bullet pengalaman", "items": {"type": "object", "required": ["surface_text", "context"], "properties": {
+      "surface_text": {"type": "string"}, "concept_id": {"type": ["string", "null"]},
+      "context": {"enum": ["experience", "internship", "freelance", "project", "organization", "education", "certification", "skills_list", "summary"]},
+      "entry_id": {"type": ["string", "null"]}, "level_raw": {"type": ["string", "null"]}, "source": {"$ref": "#/$defs/source"}}}},
+    "languages_spoken": {"type": "array", "items": {"type": "object", "properties": {"language": {"type": "string"}, "level_raw": {"type": ["string", "null"]}}}},
+    "inferences": {"type": "array", "description": "Nilai turunan, terpisah dari fakta", "items": {"type": "object", "required": ["name", "value", "method"], "properties": {
+      "name": {"type": "string"}, "value": {}, "method": {"type": "string"}, "inputs": {"type": "array", "items": {"type": "string"}}, "confidence": {"type": "number"}}}},
+    "quality": {"type": "object", "properties": {
+      "text_chars": {"type": "integer"}, "pages": {"type": "integer"}, "ocr_mean_confidence": {"type": ["number", "null"]},
+      "hidden_text_detected": {"type": "boolean"}, "injection_suspected": {"type": "boolean"},
+      "flags": {"type": "array", "items": {"type": "string"}}, "issues": {"type": "array", "items": {"type": "string"}}}}
+  }
+}

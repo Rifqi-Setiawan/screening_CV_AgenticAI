@@ -1,0 +1,14 @@
+# Klasifikasi jabatan -> role family (02_SCORING_RUBRIC_SPEC 4.3). Pola dicek pada judul (huruf kecil).
+# Judul ambigu (programmer, software engineer, it staff, developer) diputuskan dari bullet; kalau tetap ambigu -> LLM pilih dari daftar ini.
+backend:   [backend, back-end, back end, api developer, server-side, golang developer, python developer, java developer, php developer]
+fullstack: [fullstack, full-stack, full stack]
+frontend:  [frontend, front-end, front end, ui engineer, ui developer, web designer]
+mobile:    [android, ios, flutter, react native, mobile developer, mobile engineer]
+data:      [data analyst, data engineer, data scientist, bi analyst, business intelligence, analytics engineer, machine learning engineer, ml engineer]
+qa:        [qa, quality assurance, software tester, test engineer, sdet, automation tester]
+devops:    [devops, sre, site reliability, platform engineer, cloud engineer, infrastructure engineer, system administrator, sysadmin]
+security:  [security engineer, security analyst, penetration tester, soc analyst, cybersecurity]
+network:   [network engineer, network technician, network administrator, noc]
+hr:        [hr, human resource, hrd, sdm, recruiter, talent acquisition, people operations, staf rekrutmen, payroll]
+other:     []
+ambiguous: [programmer, software engineer, developer, it staff, staff it, engineer, technical leader, technical lead, consultant]

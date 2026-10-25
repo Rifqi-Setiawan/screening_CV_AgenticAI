@@ -1,0 +1,76 @@
+# Seed taksonomi skill (versi t-2026.10.0). Perluas lewat antrian kurator, jangan otomatis.
+# Format: concept_id: {label, type, aliases, related (TIDAK memberi nilai), broader}
+# Pencocokan: huruf kecil, tanpa tanda baca di tepi. Alias pendek (<=3 huruf) hanya exact match (hindari "Go" di kalimat biasa,
+# "R" dsb.); untuk alias ambigu seperti "go" wajib konteks teknis di kalimat yang sama.
+
+skill:python:        {label: Python, type: language, aliases: [python, python3, py], related: []}
+skill:fastapi:       {label: FastAPI, type: framework, aliases: [fastapi, fast api], broader: skill:python}
+skill:django:        {label: Django, type: framework, aliases: [django, django rest framework, drf], broader: skill:python}
+skill:flask:         {label: Flask, type: framework, aliases: [flask], broader: skill:python}
+skill:go:            {label: Go, type: language, aliases: [golang, go lang, "go (golang)"], related: []}
+skill:java:          {label: Java, type: language, aliases: [java, java 8, java 11, java 17]}
+skill:spring:        {label: Spring Boot, type: framework, aliases: [spring, spring boot, springboot], broader: skill:java}
+skill:nodejs:        {label: Node.js, type: runtime, aliases: [node, node.js, nodejs, node js], related: [skill:javascript]}
+skill:express:       {label: Express, type: framework, aliases: [express, express.js, expressjs], broader: skill:nodejs}
+skill:javascript:    {label: JavaScript, type: language, aliases: [javascript, js, ecmascript]}
+skill:typescript:    {label: TypeScript, type: language, aliases: [typescript, ts]}
+skill:php:           {label: PHP, type: language, aliases: [php]}
+skill:laravel:       {label: Laravel, type: framework, aliases: [laravel], broader: skill:php}
+skill:codeigniter:   {label: CodeIgniter, type: framework, aliases: [codeigniter, "ci (php)"], broader: skill:php}  # 'CI' ambigu dengan CI/CD; putuskan dari konteks (mis. 'PHP, Laravel, CI')
+skill:csharp:        {label: C#, type: language, aliases: ["c#", csharp, .net, dotnet, asp.net]}
+skill:react:         {label: React, type: framework, aliases: [react, reactjs, react.js, react js]}
+skill:vue:           {label: Vue.js, type: framework, aliases: [vue, vuejs, vue.js, vue js]}
+skill:flutter:       {label: Flutter, type: framework, aliases: [flutter, dart]}
+skill:postgresql:    {label: PostgreSQL, type: database, aliases: [postgresql, postgres, postgre sql, postgre, psql, pgsql], related: [skill:mysql]}
+skill:mysql:         {label: MySQL, type: database, aliases: [mysql, mariadb], related: [skill:postgresql]}
+skill:sqlserver:     {label: SQL Server, type: database, aliases: [sql server, ms sql server, mssql]}
+skill:oracle_db:     {label: Oracle Database, type: database, aliases: [oracle, oracle db, pl/sql]}
+skill:mongodb:       {label: MongoDB, type: database, aliases: [mongodb, mongo]}
+skill:redis:         {label: Redis, type: database, aliases: [redis]}
+skill:sql:           {label: SQL, type: language, aliases: [sql]}
+skill:bigquery:      {label: BigQuery, type: data, aliases: [bigquery, big query], related: [skill:gcp]}
+skill:docker:        {label: Docker, type: tool, aliases: [docker, dockerized, dockerised, containerized, containerised, docker compose, docker-compose], related: [skill:kubernetes]}
+skill:kubernetes:    {label: Kubernetes, type: tool, aliases: [kubernetes, k8s, gke, eks, aks, openshift], related: [skill:docker]}
+skill:aws:           {label: AWS, type: cloud, aliases: [aws, amazon web services, ec2, ecs, rds, "aws s3", "amazon s3", sqs, "aws lambda"]}  # JANGAN alias 's3' saja: di CV Indonesia 'S3' = jenjang doktor
+skill:gcp:           {label: Google Cloud, type: cloud, aliases: [gcp, google cloud, google cloud platform, gke, cloud run]}
+skill:azure:         {label: Azure, type: cloud, aliases: [azure, microsoft azure]}
+skill:rest_api:      {label: REST API, type: method, aliases: [rest api, restful api, restful, rest apis, api, endpoint]}  # 'rest' saja terlalu umum
+skill:microservices: {label: Microservices, type: method, aliases: [microservices, microservice, micro-services, layanan mikro]}
+skill:grpc:          {label: gRPC, type: method, aliases: [grpc]}
+skill:kafka:         {label: Kafka, type: tool, aliases: [kafka, apache kafka]}
+skill:git:           {label: Git, type: tool, aliases: [git, github, gitlab, bitbucket]}
+skill:ci_cd:         {label: CI/CD, type: method, aliases: [ci/cd, cicd, ci pipeline, github actions, gitlab ci, jenkins]}
+skill:linux:         {label: Linux, type: tool, aliases: [linux, ubuntu, centos, debian]}
+skill:pytest:        {label: pytest, type: tool, aliases: [pytest], broader: skill:python}
+skill:selenium:      {label: Selenium, type: tool, aliases: [selenium]}
+skill:katalon:       {label: Katalon Studio, type: tool, aliases: [katalon, katalon studio]}
+skill:api_testing:   {label: API Testing, type: method, aliases: [api testing, postman, api test automation]}
+skill:pandas:        {label: pandas, type: library, aliases: [pandas], broader: skill:python}
+skill:airflow:       {label: Airflow, type: tool, aliases: [airflow, apache airflow]}
+skill:sap:           {label: SAP, type: tool, aliases: [sap, sap erp, sap pp, sap qm, sap wm, sap mm]}
+skill:excel:         {label: Microsoft Excel, type: tool, aliases: [excel, ms excel, microsoft excel, pivot table]}
+skill:figma:         {label: Figma, type: tool, aliases: [figma]}
+skill:proxmox:       {label: Proxmox, type: tool, aliases: [proxmox]}
+skill:splunk:        {label: Splunk, type: tool, aliases: [splunk, siem]}
+# --- HR (untuk JD-02)
+skill:recruitment:   {label: Rekrutmen, type: domain, aliases: [rekrutmen, recruitment, recruiting, talent acquisition, sourcing kandidat, screening cv, interview kandidat, seleksi]}
+skill:payroll:       {label: Payroll, type: domain, aliases: [payroll, penggajian, administrasi pengupahan, upah]}
+skill:bpjs:          {label: BPJS, type: domain, aliases: [bpjs, bpjs kesehatan, bpjs ketenagakerjaan, jaminan sosial]}
+skill:labor_law_id:  {label: UU Ketenagakerjaan, type: domain, aliases: [uu ketenagakerjaan, hubungan industrial, pkwt, pkwtt, pesangon, peraturan perusahaan]}
+
+# --- Sertifikasi
+cert:aws:   {label: Sertifikasi AWS, aliases: [aws certified, aws certified developer, aws certified solutions architect, aws certified cloud practitioner]}
+cert:gcp:   {label: Sertifikasi Google Cloud, aliases: [google cloud professional, google cloud certified, associate cloud engineer, professional cloud developer]}
+cert:azure: {label: Sertifikasi Azure, aliases: [microsoft certified azure, az-900, az-104, az-204]}
+cert:hr:    {label: Sertifikasi HR, aliases: [bnsp human capital, human capital officer, sertifikasi kompetensi hr, chrp, shrm]}
+
+# --- Bidang studi
+field:computing: {label: Komputasi, aliases: [teknik informatika, informatika, ilmu komputer, computer science, sistem informasi, information systems, rekayasa perangkat lunak, software engineering, teknik komputer, computer engineering]}
+field:hr:        {label: SDM, aliases: [psikologi, psychology, manajemen sdm, manajemen sumber daya manusia, human resource management, manajemen]}
+
+# --- Konsep turunan (dinilai aturan, bukan alias)
+role_family:backend: {label: "Role family backend", note: "lihat role_families.yaml"}
+role_family:hr:      {label: "Role family HR"}
+achievement:quantified_backend: {label: "Pencapaian terukur backend", note: "bullet pekerjaan dengan angka hasil + domain backend"}
+achievement:quantified_hr:      {label: "Pencapaian terukur HR"}
+leadership:technical_team:      {label: "Memimpin tim teknis"}

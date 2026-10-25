@@ -1,0 +1,15 @@
+{
+  "job_id": "JD-02",
+  "requirement_set_version": 1,
+  "status": "APPROVED",
+  "category_weights": {"EXPERIENCE": 40, "HARD_SKILLS": 30, "EDUCATION_CERT": 15, "ACHIEVEMENT": 15},
+  "requirements": [
+    {"requirement_id": "R1", "description": "Minimal 2 tahun pengalaman di bidang HR", "category": "EXPERIENCE", "kind": "EXPERIENCE_DURATION", "importance": "MUST_HAVE", "weight": 30, "concepts": ["role_family:hr"], "params": {"min_months": 24, "accepted_role_families": ["hr"]}},
+    {"requirement_id": "R2", "description": "Administrasi payroll dan BPJS", "category": "EXPERIENCE", "kind": "RESPONSIBILITY", "importance": "STRONG_PREFERENCE", "weight": 10, "concepts": ["skill:payroll", "skill:bpjs"], "params": {"match": "ANY"}},
+    {"requirement_id": "R3", "description": "Rekrutmen dan seleksi", "category": "HARD_SKILLS", "kind": "SKILL", "importance": "MUST_HAVE", "weight": 15, "concepts": ["skill:recruitment"], "params": {}},
+    {"requirement_id": "R4", "description": "UU Ketenagakerjaan / hubungan industrial", "category": "HARD_SKILLS", "kind": "SKILL", "importance": "STRONG_PREFERENCE", "weight": 15, "concepts": ["skill:labor_law_id"], "params": {}},
+    {"requirement_id": "R5", "description": "S1 Psikologi, Manajemen SDM, atau Manajemen", "category": "EDUCATION_CERT", "kind": "EDUCATION", "importance": "STRONG_PREFERENCE", "weight": 10, "concepts": ["field:hr"], "params": {"min_level": "S1", "strong_fields": ["Psikologi", "Manajemen Sumber Daya Manusia", "Manajemen SDM", "Manajemen", "Psychology", "Human Resource Management"], "partial_fields": ["Administrasi Bisnis", "Ilmu Komunikasi", "Hukum"]}},
+    {"requirement_id": "R6", "description": "Sertifikasi kompetensi HR (mis. BNSP)", "category": "EDUCATION_CERT", "kind": "CERTIFICATION", "importance": "NICE_TO_HAVE", "weight": 5, "concepts": ["cert:hr"], "params": {}},
+    {"requirement_id": "R7", "description": "Pencapaian terukur di bidang HR", "category": "ACHIEVEMENT", "kind": "ACHIEVEMENT", "importance": "NICE_TO_HAVE", "weight": 15, "concepts": ["achievement:quantified_hr"], "params": {}}
+  ]
+}

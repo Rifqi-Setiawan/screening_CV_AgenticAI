@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requirement_set.schema.json",
+  "title": "RequirementSet",
+  "description": "Set kriteria lowongan. Juga dipakai sebagai output schema LLM saat compile JD (status DRAFT).",
+  "type": "object",
+  "required": ["job_id", "category_weights", "requirements"],
+  "properties": {
+    "job_id": {"type": "string"},
+    "requirement_set_version": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["DRAFT", "APPROVED"]},
+    "note": {"type": "string"},
+    "category_weights": {
+      "type": "object",
+      "properties": {
+        "EXPERIENCE": {"type": "number", "minimum": 0},
+        "HARD_SKILLS": {"type": "number", "minimum": 0},
+        "EDUCATION_CERT": {"type": "number", "minimum": 0},
+        "ACHIEVEMENT": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["requirement_id", "description", "category", "kind", "importance", "weight"],
+        "properties": {
+          "requirement_id": {"type": "string", "pattern": "^R\\d+$"},
+          "description": {"type": "string", "minLength": 3},
+          "category": {"enum": ["EXPERIENCE", "HARD_SKILLS", "EDUCATION_CERT", "ACHIEVEMENT", "OTHER"]},
+          "kind": {"enum": ["EXPERIENCE_DURATION", "SKILL", "RESPONSIBILITY", "EDUCATION", "CERTIFICATION", "ACHIEVEMENT", "LEADERSHIP", "LANGUAGE", "LOCATION", "WORK_AUTHORIZATION", "OTHER"]},
+          "importance": {"enum": ["MUST_HAVE", "STRONG_PREFERENCE", "NICE_TO_HAVE"]},
+          "weight": {"type": "number", "minimum": 0},
+          "concepts": {"type": "array", "items": {"type": "string"}},
+          "params": {"type": "object"},
+          "hard_filter": {"type": "boolean", "default": false, "description": "Hanya boleh true untuk LANGUAGE, LOCATION, WORK_AUTHORIZATION, CERTIFICATION wajib"},
+          "source_text": {"type": "string"},
+          "lint_flags": {"type": "array", "items": {"type": "string"}},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

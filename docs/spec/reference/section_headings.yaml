@@ -1,0 +1,13 @@
+# Kamus judul bagian CV (huruf kecil, tanpa tanda baca). Dipakai segmenter sebelum LLM.
+# Dari variasi CV sintetis dan pengamatan 6 CV asli (lihat 08_LESSONS_FROM_REAL_CVS.md).
+summary:        [ringkasan, profil, profil singkat, tentang saya, deskripsi, deskripsi diri, summary, profile, about me, professional summary, objective, career objective]
+experience:     [pengalaman kerja, pengalaman, riwayat pekerjaan, riwayat kerja, pengalaman profesional, work experience, experience, professional experience, employment history, career history]
+projects:       [proyek, projek, portofolio, projects, project experience, projects and academic activities, academic projects, personal projects]
+organizations:  [organisasi, pengalaman organisasi, kepanitiaan, kegiatan, organizations, organizational experience, leadership, activities, volunteer, volunteering]
+education:      [pendidikan, riwayat pendidikan, pendidikan formal, education, education history, academic background]
+certifications: [sertifikasi, sertifikat, pelatihan, kursus, lisensi, certifications, certificates, licenses, training, courses]
+skills:         [keahlian, keterampilan, kemampuan, skill, skills, hard skills, soft skills, technical skills, relevant skills, tech stack, tools]
+languages:      [bahasa, kemampuan bahasa, languages, language skills]
+awards:         [penghargaan, prestasi, awards, achievements, honors]
+publications:   [publikasi, publications, research]
+personal:       [data pribadi, data diri, informasi pribadi, biodata, personal details, personal information, contact, contact info, kontak]

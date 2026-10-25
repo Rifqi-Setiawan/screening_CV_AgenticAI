@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eval_export.schema.json",
+  "title": "EvalExport",
+  "description": "Output GET /screenings/{run_id}/eval-export, dibaca golden_dataset/evaluate.py",
+  "type": "object",
+  "required": ["job_id", "run_id", "results"],
+  "properties": {
+    "job_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "as_of": {"type": "string"},
+    "versions": {"type": "object"},
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "status"],
+        "properties": {
+          "file": {"type": "string"},
+          "status": {"enum": ["SCORED", "NEEDS_REVIEW", "REJECTED", "DUPLICATE"]},
+          "rank": {"type": ["integer", "null"]},
+          "band": {"enum": ["A", "B", "C", "R", null]},
+          "score": {"type": ["number", "null"]},
+          "raw_score": {"type": ["number", "null"]},
+          "recommendation": {"enum": ["SHORTLIST", "REVIEW", "LOW_PRIORITY", "MANUAL_CHECK", null]},
+          "requirement_states": {"type": "object", "additionalProperties": {"enum": ["STRONG", "PARTIAL", "NOT_DEMONSTRATED", "UNKNOWN"]}},
+          "metrics": {"type": "object", "properties": {"backend_months": {"type": "number"}}},
+          "flags": {"type": "array", "items": {"type": "string"}},
+          "reasons": {"type": "array", "items": {"type": "string"}},
+          "duplicate_of": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

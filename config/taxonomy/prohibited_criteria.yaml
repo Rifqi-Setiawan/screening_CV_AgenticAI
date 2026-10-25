@@ -1,0 +1,21 @@
+# Leksikon policy linter untuk kriteria lowongan.
+# PROHIBITED = tidak bisa disetujui sebagai requirement scoring maupun eligibility rule.
+# ADMINISTRATIVE_ONLY = kriteria usia/gender administratif yang tidak boleh masuk ke skor kompetensi.
+# RISKY = boleh sebagai requirement, dengan peringatan.
+
+prohibited:
+  religion:   ["agama", "muslim", "muslimah", "kristen", "katolik", "hindu", "buddha", "berhijab", "religion"]
+  ethnicity:  ["suku", "etnis", "keturunan", "ras", "pribumi", "ethnicity", "race"]
+  marital:    ["belum menikah", "lajang", "single", "status pernikahan", "married", "tidak sedang hamil", "hamil"]
+  appearance: ["berpenampilan menarik", "good looking", "tinggi badan", "berat badan", "tinggi minimal", "foto full body", "proporsional"]
+  health_misc: ["golongan darah", "tidak bertato", "tidak bertindik"]
+
+administrative_only:
+  age:        ["usia", "umur", "maksimal * tahun", "maks. * tahun", "max * years old", "age", "kelahiran tahun", "usia maksimal", "usia minimal"]
+  gender:     ["pria", "wanita", "laki-laki", "perempuan", "male", "female", "jenis kelamin", "diutamakan wanita", "diutamakan pria"]
+
+risky:
+  age_proxy:  ["fresh graduate", "fresh graduate maksimal", "lulus maksimal * tahun", "tahun lulus minimal"]
+  institution: ["lulusan universitas *", "ptn", "kampus ternama", "top university", "akreditasi a"]
+  gpa:         ["ipk minimal", "ipk min", "gpa minimum", "minimum gpa"]
+  domicile:    ["domisili", "berdomisili"]   # sah hanya bila pekerjaan on-site; minta konfirmasi

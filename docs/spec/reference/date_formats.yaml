@@ -1,0 +1,30 @@
+# Normalisasi tanggal. Output: YYYY-MM atau "present".
+months:
+  1:  [jan, januari, january]
+  2:  [feb, februari, pebruari, february]
+  3:  [mar, maret, march]
+  4:  [apr, april]
+  5:  [mei, may]
+  6:  [jun, juni, june]
+  7:  [jul, juli, july]
+  8:  [agu, agt, agus, agustus, aug, august]
+  9:  [sep, sept, september]
+  10: [okt, oktober, oct, october]
+  11: [nov, nopember, november]
+  12: [des, desember, dec, december]
+present: [sekarang, saat ini, kini, present, now, current, currently, to date, hingga sekarang, s/d sekarang]
+separators: ["-", "–", "—", "to", "s/d", "sd", "sampai", "hingga", "until"]
+patterns_seen:
+  - "Maret 2022 – Sekarang"
+  - "MARET 2023 – SEKARANG"
+  - "NOVEMBER 2022 – JANUARI 2023"     # CV berbahasa Inggris dengan bulan Indonesia
+  - "Aug 2022 – Present"
+  - "July 2025 – September 2025"
+  - "01/2019 - Present"
+  - "03/2023 - Present"
+  - "2020 – 2022"                      # year-only: awal YYYY-07, akhir YYYY-06 (INFERENCE)
+  - "September 2021 -—Desember 2024"   # hasil OCR dengan tanda strip ganda
+rules:
+  - "Bulan diisi aturan year-only ditandai precision=year, kind=INFERENCE"
+  - "Tanggal masa depan (> as_of) atau akhir < awal -> flag DATE_ANOMALY, entri tidak dihitung untuk durasi"
+  - "Format DD/MM/YYYY atau tanggal lengkap ('03 Februari 2025') -> ambil bulan dan tahun"

@@ -1,0 +1,33 @@
+# Certifications taxonomy mapping concept IDs to candidate certification matching keywords (FX-31).
+
+cert:cloud:
+  terms:
+    - aws certified
+    - google cloud
+    - azure
+    - cloud developer
+    - gcp
+    - associate cloud engineer
+    - cloud practitioner
+
+cert:hr:
+  terms:
+    - human capital
+    - bnsp
+    - chrp
+    - hr
+    - sertifikasi sdm
+    - human capital officer
+
+cert:safety_civil:
+  terms:
+    - ska
+    - skt
+    - k3
+    - keselamatan
+    - hse
+    - inspektur
+    - ahli k3
+    - kompetensi
+    - bnsp
+    - bimtek

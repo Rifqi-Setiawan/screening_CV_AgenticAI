@@ -1,0 +1,415 @@
+{
+  "job_id": "JD-01",
+  "run_id": "run_jd01_no_verifier_repeat",
+  "as_of": "2026-10-01",
+  "results": [
+    {
+      "file": "I1_hr_generalist_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 14
+    },
+    {
+      "file": "I2_accountant_id.docx",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 11
+    },
+    {
+      "file": "I3_graphic_designer_two_column_en.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "HIDDEN_TEXT"
+      ],
+      "reasons": [],
+      "rank": 15
+    },
+    {
+      "file": "I4_sales_executive_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 12
+    },
+    {
+      "file": "I5_nurse_scan_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 0.0,
+      "raw_score": 0.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "NOT_DEMONSTRATED",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "NOT_DEMONSTRATED",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "NOT_DEMONSTRATED",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 13
+    },
+    {
+      "file": "M1_nodejs_backend_two_column.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 74.0,
+      "raw_score": 77.0,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "PARTIAL",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 57.0
+      },
+      "flags": [
+        "HIDDEN_TEXT",
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 6
+    },
+    {
+      "file": "M2_data_analyst_id.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 40.5,
+      "raw_score": 40.5,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "NOT_DEMONSTRATED",
+        "R6": "STRONG",
+        "R7": "PARTIAL",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 9
+    },
+    {
+      "file": "M3_fresh_graduate_scan_id.pdf",
+      "status": "SCORED",
+      "band": "B",
+      "score": 58.5,
+      "raw_score": 58.5,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "PARTIAL",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 3.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 7
+    },
+    {
+      "file": "M4_qa_automation_en.docx",
+      "status": "SCORED",
+      "band": "B",
+      "score": 49.0,
+      "raw_score": 49.0,
+      "recommendation": "REVIEW",
+      "requirement_states": {
+        "R1": "NOT_DEMONSTRATED",
+        "R2": "PARTIAL",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 0.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 8
+    },
+    {
+      "file": "M5_php_fullstack_two_column_id.pdf",
+      "status": "SCORED",
+      "band": "C",
+      "score": 49.0,
+      "raw_score": 64.0,
+      "recommendation": "LOW_PRIORITY",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "NOT_DEMONSTRATED",
+        "R4": "NOT_DEMONSTRATED",
+        "R5": "STRONG",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 66.0
+      },
+      "flags": [
+        "HIDDEN_TEXT"
+      ],
+      "reasons": [],
+      "rank": 10
+    },
+    {
+      "file": "S1_senior_backend_id.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 100.0,
+      "raw_score": 100.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "STRONG",
+        "R9": "STRONG",
+        "R10": "STRONG"
+      },
+      "metrics": {
+        "backend_months": 88.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 1
+    },
+    {
+      "file": "S2_backend_fintech_en.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 88.0,
+      "raw_score": 88.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "STRONG",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 70.0
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 3
+    },
+    {
+      "file": "S3_backend_mixed_lang.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 75.0,
+      "raw_score": 75.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "PARTIAL",
+        "R6": "NOT_DEMONSTRATED",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "NOT_DEMONSTRATED"
+      },
+      "metrics": {
+        "backend_months": 47.5
+      },
+      "flags": [
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 5
+    },
+    {
+      "file": "S4_lead_backend_two_column.pdf",
+      "status": "SCORED",
+      "band": "A",
+      "score": 95.0,
+      "raw_score": 95.0,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "PARTIAL",
+        "R8": "STRONG",
+        "R9": "STRONG",
+        "R10": "STRONG"
+      },
+      "metrics": {
+        "backend_months": 70.0
+      },
+      "flags": [
+        "HIDDEN_TEXT",
+        "KEYWORD_STUFFING"
+      ],
+      "reasons": [],
+      "rank": 2
+    },
+    {
+      "file": "S5_backend_healthtech_id.docx",
+      "status": "SCORED",
+      "band": "A",
+      "score": 87.5,
+      "raw_score": 87.5,
+      "recommendation": "SHORTLIST",
+      "requirement_states": {
+        "R1": "STRONG",
+        "R2": "STRONG",
+        "R3": "STRONG",
+        "R4": "STRONG",
+        "R5": "STRONG",
+        "R6": "STRONG",
+        "R7": "STRONG",
+        "R8": "NOT_DEMONSTRATED",
+        "R9": "PARTIAL",
+        "R10": "PARTIAL"
+      },
+      "metrics": {
+        "backend_months": 76.0
+      },
+      "flags": [],
+      "reasons": [],
+      "rank": 4
+    }
+  ]
+}
