@@ -156,9 +156,8 @@ def _build_temporal_entries(experiences: Sequence[Any]) -> list[TemporalEntry]:
 
         # Domain weights from allocations
         domain_weights: dict[str, float] = {}
-        raw_allocs = (
-            getattr(exp, "domain_allocations", None)
-            or (exp.get("domain_allocations") if isinstance(exp, dict) else [])
+        raw_allocs = getattr(exp, "domain_allocations", None) or (
+            exp.get("domain_allocations") if isinstance(exp, dict) else []
         )
         allocations = list(raw_allocs) if raw_allocs else []
         for alloc in allocations:
@@ -382,7 +381,9 @@ class ScreeningPipeline:
             # Step S6: Matcher Agent for remaining facets
             matcher_judgments: list[FacetEvaluationResult] = []
             if remaining_facets:
-                facets_for_matcher: list[RequirementFacet | FacetEvaluationInput | dict[str, Any]] = list(remaining_facets)
+                facets_for_matcher: list[RequirementFacet | FacetEvaluationInput | dict[str, Any]] = list(
+                    remaining_facets
+                )
                 # Retrieve evidence per facet
                 matcher_output = await run_matcher_agent(
                     facets=facets_for_matcher,
@@ -529,7 +530,9 @@ class ScreeningPipeline:
 
             for req in req_set_ir.requirements:
                 if req.requirement_id in re_judgments_by_req:
-                    re_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(re_judgments_by_req[req.requirement_id])
+                    re_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(
+                        re_judgments_by_req[req.requirement_id]
+                    )
                     re_agg = aggregate_requirement_facets(
                         requirement=req,
                         judgments=re_judgments_any,
@@ -654,7 +657,9 @@ class ScreeningPipeline:
                     requirement_id=req_id,
                     facet_key=fkey,
                     tenant_id=tenant_id,
-                    verdict=str(getattr(j, "verdict", None) or (j.get("verdict") if isinstance(j, dict) else "UNKNOWN")),
+                    verdict=str(
+                        getattr(j, "verdict", None) or (j.get("verdict") if isinstance(j, dict) else "UNKNOWN")
+                    ),
                     method=str(getattr(j, "method", None) or (j.get("method") if isinstance(j, dict) else "llm")),
                     depth_level=getattr(j, "depth_level", None)
                     or (j.get("depth_level") if isinstance(j, dict) else "L0"),
