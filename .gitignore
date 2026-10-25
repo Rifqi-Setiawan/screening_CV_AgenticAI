@@ -21,6 +21,7 @@ data/
 /data/
 docs/spec/golden_dataset/private/
 *.pdf
+!docs/*.pdf
 *.docx
 *.doc
 
