@@ -451,7 +451,7 @@ async def save_requirement_ir_to_db(
     dur_policy_json = json.dumps(req.duration_policy.model_dump()) if req.duration_policy else "{}"
 
     async with conn.cursor() as cur:
-        # 1. Insert requirement row
+        # 1. Insert or update requirement row
         await cur.execute(
             """
             INSERT INTO requirements (
@@ -461,6 +461,23 @@ async def save_requirement_ir_to_db(
                 accepted_evidence, depth_floor
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (requirement_set_id, requirement_id)
+            DO UPDATE SET
+                description = EXCLUDED.description,
+                category = EXCLUDED.category,
+                kind = EXCLUDED.kind,
+                importance = EXCLUDED.importance,
+                weight = EXCLUDED.weight,
+                concepts = EXCLUDED.concepts,
+                params = EXCLUDED.params,
+                hard_filter = EXCLUDED.hard_filter,
+                source_text = EXCLUDED.source_text,
+                lint_flags = EXCLUDED.lint_flags,
+                target_domains = EXCLUDED.target_domains,
+                duration_policy = EXCLUDED.duration_policy,
+                accepted_evidence = EXCLUDED.accepted_evidence,
+                depth_floor = EXCLUDED.depth_floor
+            RETURNING id
             """,
             (
                 r_id,
@@ -483,6 +500,9 @@ async def save_requirement_ir_to_db(
                 req.depth_floor,
             ),
         )
+        row = await cur.fetchone()
+        if row:
+            r_id = row[0] if isinstance(row, (tuple, list)) else row["id"]
 
         # 2. Insert requirement facets
         for facet in req.facets:
@@ -688,6 +708,65 @@ async def save_domain_duration_to_db(
                 months_lo,
                 months_hi,
                 ledger_json,
+            ),
+        )
+        await conn.commit()
+
+
+async def save_critic_review_to_db(
+    conn: Any,
+    run_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    facet_key: str,
+    tenant_id: uuid.UUID,
+    verdict_action: str,
+    final_verdict: str,
+    analysis: str,
+    original_verdict: str | None = None,
+    depth_level: str | None = None,
+    reasoning: str | None = None,
+    support_atoms: list[str] | None = None,
+    is_disagreement: bool = False,
+    flags: list[str] | None = None,
+) -> None:
+    """Inserts or updates a critic review in `critic_reviews` table."""
+    support_atoms_list = [str(a) for a in (support_atoms or [])]
+    flags_list = [str(f) for f in (flags or [])]
+    async with conn.cursor() as cur:
+        await cur.execute(
+            """
+            INSERT INTO critic_reviews (
+                run_id, candidate_id, facet_key, tenant_id,
+                verdict_action, final_verdict, original_verdict, depth_level,
+                analysis, reasoning, support_atoms, is_disagreement, flags
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (run_id, candidate_id, facet_key)
+            DO UPDATE SET
+                verdict_action = EXCLUDED.verdict_action,
+                final_verdict = EXCLUDED.final_verdict,
+                original_verdict = EXCLUDED.original_verdict,
+                depth_level = EXCLUDED.depth_level,
+                analysis = EXCLUDED.analysis,
+                reasoning = EXCLUDED.reasoning,
+                support_atoms = EXCLUDED.support_atoms,
+                is_disagreement = EXCLUDED.is_disagreement,
+                flags = EXCLUDED.flags
+            """,
+            (
+                run_id,
+                candidate_id,
+                facet_key,
+                tenant_id,
+                verdict_action,
+                final_verdict,
+                original_verdict,
+                depth_level,
+                analysis,
+                reasoning,
+                support_atoms_list,
+                is_disagreement,
+                flags_list,
             ),
         )
         await conn.commit()

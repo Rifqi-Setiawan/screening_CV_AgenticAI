@@ -288,6 +288,16 @@ async def save_profiler_results(
                 saved_allocations += 1
 
         # 2. Save atom_tags
+        if ontology_version:
+            await cur.execute(
+                """
+                INSERT INTO ontology_versions (version, sha256, loaded_at)
+                VALUES (%s, 'auto_persisted', now())
+                ON CONFLICT (version) DO NOTHING
+                """,
+                (ontology_version,),
+            )
+
         for tag in output.atom_tags:
             atom_uuid: uuid.UUID | None = None
             if _is_uuid(tag.atom_id):

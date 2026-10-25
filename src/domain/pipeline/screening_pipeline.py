@@ -43,6 +43,7 @@ from src.domain.ontology.loader import get_ontology_graph
 from src.domain.requirements.compiler import (
     compile_job_requirements_ir,
     decompose_role_to_facets,
+    save_critic_review_to_db,
     save_domain_duration_to_db,
     save_facet_judgment_to_db,
     save_requirement_ir_to_db,
@@ -681,6 +682,50 @@ class ScreeningPipeline:
                     months_lo=float(dur.get("months_lo", 0.0)),
                     months_hi=float(dur.get("months_hi", 0.0)),
                     month_ledger=dur.get("month_ledger", []),
+                )
+
+            for cr in c_res.critic_reviews:
+                fkey = getattr(cr, "facet_key", "") or (cr.get("facet_key", "") if isinstance(cr, dict) else "")
+                v_action = getattr(cr, "verdict_action", None) or (
+                    cr.get("verdict_action") if isinstance(cr, dict) else "CONFIRM"
+                )
+                v_action_str = v_action.value if hasattr(v_action, "value") else str(v_action)
+                f_verdict = getattr(cr, "final_verdict", None) or (
+                    cr.get("final_verdict") if isinstance(cr, dict) else "UNKNOWN"
+                )
+                f_verdict_str = f_verdict.value if hasattr(f_verdict, "value") else str(f_verdict)
+                o_verdict = getattr(cr, "original_verdict", None) or (
+                    cr.get("original_verdict") if isinstance(cr, dict) else None
+                )
+                o_verdict_str = str(getattr(o_verdict, "value", o_verdict)) if o_verdict is not None else None
+                d_level = getattr(cr, "depth_level", None) or (cr.get("depth_level") if isinstance(cr, dict) else None)
+                d_level_str = str(getattr(d_level, "value", d_level)) if d_level is not None else None
+                analysis_text = getattr(cr, "analysis", "") or (cr.get("analysis", "") if isinstance(cr, dict) else "")
+                reasoning_text = getattr(cr, "reasoning", None) or (
+                    cr.get("reasoning") if isinstance(cr, dict) else None
+                )
+                supp_atoms = getattr(cr, "support_atoms", []) or (
+                    cr.get("support_atoms", []) if isinstance(cr, dict) else []
+                )
+                is_dis = getattr(cr, "is_disagreement", False) or (
+                    cr.get("is_disagreement", False) if isinstance(cr, dict) else False
+                )
+                cr_flags = getattr(cr, "flags", []) or (cr.get("flags", []) if isinstance(cr, dict) else [])
+                await save_critic_review_to_db(
+                    conn=conn,
+                    run_id=run_id,
+                    candidate_id=c_uuid,
+                    facet_key=fkey,
+                    tenant_id=tenant_id,
+                    verdict_action=v_action_str,
+                    final_verdict=f_verdict_str,
+                    analysis=analysis_text,
+                    original_verdict=o_verdict_str,
+                    depth_level=d_level_str,
+                    reasoning=reasoning_text,
+                    support_atoms=supp_atoms,
+                    is_disagreement=bool(is_dis),
+                    flags=cr_flags,
                 )
 
         await conn.commit()

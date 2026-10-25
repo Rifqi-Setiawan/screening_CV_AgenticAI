@@ -422,6 +422,7 @@ class ProfilingPipeline:
             atoms=atoms_to_save,
             ontology_version=self.ontology.version,
         )
+        await conn.commit()
 
 
 async def run_profiling_pipeline(

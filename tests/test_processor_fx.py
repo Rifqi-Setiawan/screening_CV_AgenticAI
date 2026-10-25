@@ -134,10 +134,19 @@ async def test_processor_deduplicates_candidate_by_email():
         file_type="pdf",
     )
 
+    from unittest.mock import AsyncMock
+
+    from src.agents.schemas.profiler import ProfilerOutput
+
     with (
         patch("src.worker.processor.sanitize_file", side_effect=[mock_san1, mock_san2]),
         patch("src.worker.processor.extract_candidate_profile", return_value=mock_profile),
         patch("src.worker.processor.embed_texts", return_value=[[0.1] * 640]),
+        patch(
+            "src.domain.pipeline.profiling_pipeline.run_profiler_agent",
+            new_callable=AsyncMock,
+            return_value=ProfilerOutput(),
+        ),
     ):
         res1 = await process_document(doc1_id)
         assert res1["status"] == "READY"

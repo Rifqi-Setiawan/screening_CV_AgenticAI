@@ -299,6 +299,50 @@ async def process_document(doc_id: uuid.UUID) -> dict[str, Any]:
             prof_row = await cur.fetchone()
             profile_id = prof_row["id"]
 
+            # 7b. Run Profiling Pipeline (Graph A) to generate and save evidence atoms, offset map, experiences, allocations, and tags
+            pii_spans_list: list[tuple[int, int, str]] = []
+            if san.extracted_text:
+                for target, repl in [
+                    (email_val, "[EMAIL]"),
+                    (phone_val, "[TELEPON]"),
+                ]:
+                    if target:
+                        for m in re.finditer(re.escape(target), san.extracted_text, flags=re.IGNORECASE):
+                            pii_spans_list.append((m.start(), m.end(), repl))
+                if identity_rec.get("full_name"):
+                    for m in re.finditer(re.escape(identity_rec["full_name"]), san.extracted_text, flags=re.IGNORECASE):
+                        pii_spans_list.append((m.start(), m.end(), "[NAMA]"))
+
+            pii_spans_list.sort(key=lambda s: (s[0], -(s[1] - s[0])))
+            clean_pii_spans: list[tuple[int, int, str]] = []
+            last_end = -1
+            for s_start, s_end, s_repl in pii_spans_list:
+                if s_start >= last_end:
+                    clean_pii_spans.append((s_start, s_end, s_repl))
+                    last_end = s_end
+
+            from src.domain.pipeline.profiling_pipeline import run_profiling_pipeline
+
+            raw_title = raw_profile.get("headline") or (
+                matching_profile.get("experiences", [{}])[0].get("title")
+                if matching_profile.get("experiences")
+                else None
+            )
+
+            profiling_result = await run_profiling_pipeline(
+                profile_id=profile_id,
+                raw_text=san.extracted_text,
+                candidate_profile=matching_profile,
+                pii_spans=clean_pii_spans,
+                document_id=doc_id,
+                tenant_id=doc["tenant_id"],
+                raw_title=raw_title,
+                save_to_db=True,
+                conn=conn,
+            )
+            if profiling_result.flags:
+                quality_flags = list(set(quality_flags + profiling_result.flags))
+
             # Clean existing chunks if re-processing
             await cur.execute("DELETE FROM profile_chunks WHERE profile_id = %s", (profile_id,))
 

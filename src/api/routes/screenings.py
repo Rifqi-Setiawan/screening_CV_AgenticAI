@@ -217,6 +217,148 @@ async def get_screening_run_status(
         }
 
 
+async def _fetch_candidate_v2_artifacts(
+    cur: Any,
+    run_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> dict[str, Any]:
+    """Fetches v2.1 screening artifacts: facet_judgments, domain_durations, critic_reviews, grounding_atoms."""
+    # 1. Facet Judgments
+    await cur.execute(
+        """
+        SELECT requirement_id, facet_key, verdict, depth_level,
+               support_atom_ids, method, analysis, nli_p_entail,
+               rationale_code, superseded_by_critic
+        FROM facet_judgments
+        WHERE run_id = %s AND candidate_id = %s AND tenant_id = %s
+        ORDER BY requirement_id, facet_key
+        """,
+        (run_id, candidate_id, tenant_id),
+    )
+    fj_rows = await cur.fetchall()
+    facet_judgments = [
+        {
+            "requirement_id": r["requirement_id"],
+            "facet_key": r["facet_key"],
+            "verdict": r["verdict"],
+            "depth_level": r["depth_level"] or "L0",
+            "analysis": r["analysis"] or "",
+            "support_atom_ids": [str(a) for a in (r["support_atom_ids"] or [])],
+            "method": r["method"],
+            "nli_p_entail": float(r["nli_p_entail"]) if r["nli_p_entail"] is not None else None,
+            "rationale_code": r["rationale_code"],
+            "superseded_by_critic": r["superseded_by_critic"],
+        }
+        for r in fj_rows
+    ]
+
+    # 2. Domain Durations
+    await cur.execute(
+        """
+        SELECT domain, policy_hash, months_lo, months_hi, month_ledger
+        FROM domain_durations
+        WHERE run_id = %s AND candidate_id = %s AND tenant_id = %s
+        ORDER BY domain
+        """,
+        (run_id, candidate_id, tenant_id),
+    )
+    dd_rows = await cur.fetchall()
+    domain_durations = [
+        {
+            "domain": r["domain"],
+            "policy_hash": r["policy_hash"],
+            "months_lo": float(r["months_lo"]),
+            "months_hi": float(r["months_hi"]),
+            "month_ledger": r["month_ledger"]
+            if isinstance(r["month_ledger"], list)
+            else json.loads(r["month_ledger"] or "[]"),
+        }
+        for r in dd_rows
+    ]
+
+    # 3. Critic Reviews
+    await cur.execute(
+        """
+        SELECT facet_key, verdict_action, final_verdict, original_verdict,
+               depth_level, analysis, reasoning, support_atoms, is_disagreement, flags
+        FROM critic_reviews
+        WHERE run_id = %s AND candidate_id = %s AND tenant_id = %s
+        ORDER BY facet_key
+        """,
+        (run_id, candidate_id, tenant_id),
+    )
+    cr_rows = await cur.fetchall()
+    critic_reviews = [
+        {
+            "facet_key": r["facet_key"],
+            "verdict_action": r["verdict_action"],
+            "final_verdict": r["final_verdict"],
+            "original_verdict": r["original_verdict"],
+            "depth_level": r["depth_level"],
+            "analysis": r["analysis"],
+            "reasoning": r["reasoning"],
+            "support_atoms": r["support_atoms"] or [],
+            "is_disagreement": r["is_disagreement"],
+            "flags": r["flags"] or [],
+        }
+        for r in cr_rows
+    ]
+
+    # 4. Grounding Atoms
+    all_supp_ids: set[str] = set()
+    for fj in facet_judgments:
+        for sid in fj["support_atom_ids"]:
+            all_supp_ids.add(str(sid))
+    for cr in critic_reviews:
+        for sid in cr["support_atoms"]:
+            all_supp_ids.add(str(sid))
+
+    await cur.execute(
+        """
+        SELECT ea.id, ea.atom_key, ea.kind, ea.visibility, ea.entry_ref, ea.page,
+               ea.char_start, ea.char_end, ea.red_start, ea.red_end, ea.bbox, ea.text_redacted
+        FROM evidence_atoms ea
+        JOIN candidate_profiles cp ON cp.id = ea.profile_id
+        JOIN documents d ON d.id = cp.document_id
+        WHERE d.candidate_id = %s AND ea.tenant_id = %s
+        ORDER BY ea.page, ea.char_start
+        """,
+        (candidate_id, tenant_id),
+    )
+    ea_rows = await cur.fetchall()
+    grounding_atoms = []
+    for r in ea_rows:
+        aid_str = str(r["id"])
+        akey = r["atom_key"]
+        if not all_supp_ids or aid_str in all_supp_ids or akey in all_supp_ids:
+            grounding_atoms.append(
+                {
+                    "id": aid_str,
+                    "atom_key": akey,
+                    "kind": r["kind"],
+                    "visibility": r["visibility"],
+                    "entry_ref": r["entry_ref"],
+                    "page": r["page"],
+                    "char_start": r["char_start"],
+                    "char_end": r["char_end"],
+                    "red_start": r["red_start"],
+                    "red_end": r["red_end"],
+                    "bbox": r["bbox"]
+                    if isinstance(r["bbox"], dict)
+                    else (json.loads(r["bbox"]) if r["bbox"] else None),
+                    "text_redacted": r["text_redacted"],
+                }
+            )
+
+    return {
+        "facet_judgments": facet_judgments,
+        "domain_durations": domain_durations,
+        "critic_reviews": critic_reviews,
+        "grounding_atoms": grounding_atoms,
+    }
+
+
 @router.get("/{run_id}/rankings")
 async def get_rankings(
     job_id: uuid.UUID,
@@ -271,6 +413,11 @@ async def get_rankings(
         else:
             filtered_rows = rows
 
+        for r in filtered_rows:
+            cid = r["candidate_id"]
+            v2_data = await _fetch_candidate_v2_artifacts(cur, run_id, cid, current_user.tenant_id)
+            r.update(v2_data)
+
         return {
             "job_id": str(job_id),
             "screening_run_id": str(run_id),
@@ -278,14 +425,15 @@ async def get_rankings(
         }
 
 
-@router.get("/{run_id}/candidates/{cv_id}")
+@router.get("/{run_id}/candidates/{candidate_id}")
 async def get_candidate_detail(
     job_id: uuid.UUID,
     run_id: uuid.UUID,
-    cv_id: uuid.UUID,
+    candidate_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Returns detailed evaluation, requirement states, evidence quotes, and template reasoning."""
+    cv_id = candidate_id
     async with get_connection() as conn:
         cur = conn.cursor()
         await get_job_for_tenant(cur, job_id, current_user.tenant_id)
@@ -382,8 +530,11 @@ async def get_candidate_detail(
             "details": elig_row["details"] if elig_row else [],
         }
 
+        v2_artifacts = await _fetch_candidate_v2_artifacts(cur, run_id, cv_id, current_user.tenant_id)
+
         return {
             "cv_id": str(cv_id),
+            "candidate_id": str(cv_id),
             "file_name": cand_score["file_name"],
             "rank": cand_score["rank"],
             "score": cand_score["final_score"],
@@ -396,6 +547,10 @@ async def get_candidate_detail(
             "evidence": ev_map,
             "explanation": explanation,
             "eligibility": elig_data,
+            "facet_judgments": v2_artifacts["facet_judgments"],
+            "domain_durations": v2_artifacts["domain_durations"],
+            "critic_reviews": v2_artifacts["critic_reviews"],
+            "grounding_atoms": v2_artifacts["grounding_atoms"],
         }
 
 
