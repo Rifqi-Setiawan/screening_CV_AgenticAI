@@ -107,6 +107,7 @@ class ModelGateway:
         task: str = "jd_compilation",
         tenant_id: uuid.UUID | None = None,
         json_mode: bool = True,
+        model: str | None = None,
     ) -> dict[str, Any] | list[Any] | None:
         if settings.LLM_DATA_POLICY == "paid_or_local_only":
             logger.warning("LLM call skipped: policy 'paid_or_local_only' restricts dev router usage.")
@@ -117,7 +118,13 @@ class ModelGateway:
         self.verify_redacted_text(combined_prompt)
 
         api_key = resolve_router_key()
-        model = settings.LLM_MODEL_VERIFIER if task == "verification" else settings.LLM_MODEL_JD_COMPILER
+        if model is None:
+            if task in ("profiler", "profiling"):
+                model = settings.LLM_MODEL_PROFILER
+            elif task == "verification":
+                model = settings.LLM_MODEL_VERIFIER
+            else:
+                model = settings.LLM_MODEL_JD_COMPILER
 
         input_hash = hashlib.sha256(combined_prompt.encode()).hexdigest()
         t0 = time.time()

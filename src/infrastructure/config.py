@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     LLM_GATEWAY_KEY: str = ""
     LLM_MODEL_JD_COMPILER: str = "ag/gemini-3.8-flash-high"
     LLM_MODEL_VERIFIER: str = "ag/gemini-3.8-flash-high"
+    LLM_MODEL_PROFILER: str = "ag/gemini-3.8-flash-high"
     LLM_TEMPERATURE: float = 0.0
     VERIFIER_CONCURRENCY: int = 5
 
