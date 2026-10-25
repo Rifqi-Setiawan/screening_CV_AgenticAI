@@ -121,6 +121,8 @@ class ModelGateway:
         if model is None:
             if task in ("profiler", "profiling"):
                 model = settings.LLM_MODEL_PROFILER
+            elif task == "critic":
+                model = settings.LLM_MODEL_CRITIC
             elif task == "verification":
                 model = settings.LLM_MODEL_VERIFIER
             else:
