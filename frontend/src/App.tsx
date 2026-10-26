@@ -1441,7 +1441,7 @@ Persyaratan:
                       <th className="py-2.5 px-3">Kriteria & Spesifikasi</th>
                       <th className="py-2.5 px-3 w-40">Kategori</th>
                       <th className="py-2.5 px-3 w-36">Tingkat</th>
-                      <th className="py-2.5 px-3 w-24 text-center">Bobot</th>
+                      <th className="py-2.5 px-3 w-28 text-center" title="Bobot poin relatif dalam kategorinya">Bobot Poin</th>
                       <th className="py-2.5 px-3">Kutipan Sumber di JD</th>
                       <th className="py-2.5 px-3 w-12 text-center">Aksi</th>
                     </tr>
@@ -1525,7 +1525,7 @@ Persyaratan:
                               }}
                               className="w-14 px-1 py-1 text-center font-mono font-bold text-slate-900 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded text-xs bg-slate-50 focus:bg-white focus:outline-hidden"
                             />
-                            <span className="font-mono text-slate-400 text-xs">%</span>
+                            <span className="font-medium text-slate-500 text-[11px]">Poin</span>
                           </div>
                         </td>
                         <td className="py-2.5 px-3 text-slate-500 italic max-w-xs truncate" title={r.source_text}>
@@ -1578,7 +1578,7 @@ Persyaratan:
                   <option value="NICE_TO_HAVE">⚪ Nilai Tambah</option>
                 </select>
                 <div className="flex items-center space-x-1 shrink-0">
-                  <span className="text-[11px] text-slate-500 font-medium">Bobot:</span>
+                  <span className="text-[11px] text-slate-500 font-medium">Poin:</span>
                   <input
                     type="number"
                     min="1"
@@ -1587,7 +1587,7 @@ Persyaratan:
                     onChange={(e) => setNewReqWeight(parseInt(e.target.value) || 10)}
                     className="w-14 px-1.5 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-center bg-white focus:outline-hidden"
                   />
-                  <span className="text-xs text-slate-400 font-mono">%</span>
+                  <span className="text-xs text-slate-500 font-medium">Poin</span>
                 </div>
                 <button
                   onClick={handleAddRequirement}
@@ -1709,7 +1709,7 @@ Persyaratan:
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Bobot Penilaian (Skala 1 - 100):
+                      Bobot Kriteria (Poin Relatif):
                     </label>
                     <div className="flex items-center space-x-2">
                       <input
@@ -1720,7 +1720,7 @@ Persyaratan:
                         onChange={(e) => setEditingReqData({ ...editingReqData, weight: parseFloat(e.target.value) || 0 })}
                         className="w-24 px-3 py-2 font-mono font-bold text-slate-900 border border-slate-300 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                       />
-                      <span className="font-mono text-slate-500 text-xs font-semibold">% Bobot</span>
+                      <span className="font-mono text-slate-500 text-xs font-semibold">Poin</span>
                     </div>
                   </div>
 
