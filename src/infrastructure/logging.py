@@ -29,9 +29,22 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.handlers.clear()
 
+    formatter = JSONFormatter()
+
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JSONFormatter())
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
+
+    try:
+        from pathlib import Path
+        log_dir = Path("/srv/hermes-control/services/cv-screening-agentic/logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(str(log_dir / "app.log"), encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except Exception:
+        pass
+
     return logger
 
 

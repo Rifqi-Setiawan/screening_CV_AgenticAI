@@ -81,9 +81,10 @@ class ModelGateway:
         self._client: httpx.AsyncClient | None = None
 
     def get_client(self) -> httpx.AsyncClient:
-        """Returns reusable persistent AsyncClient session."""
+        """Returns AsyncClient session without stale keepalive pooling."""
+        limits = httpx.Limits(max_keepalive_connections=0, max_connections=10, keepalive_expiry=5.0)
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=90.0)
+            self._client = httpx.AsyncClient(timeout=180.0, limits=limits)
         return self._client
 
     async def close(self) -> None:
@@ -149,13 +150,13 @@ class ModelGateway:
         status_str = "FAILED"
         tokens_in = tokens_out = 0
         output_hash = ""
-        client = self.get_client()
 
         max_retries = 3
         backoff_sec = 0.5
 
         for attempt in range(max_retries):
             try:
+                client = self.get_client()
                 res = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
                 latency_ms = int((time.time() - t0) * 1000)
 
@@ -223,6 +224,7 @@ class ModelGateway:
                     return None
 
             except (httpx.ConnectError, httpx.TimeoutException) as e:
+                await self.close()
                 if attempt < max_retries - 1:
                     logger.warning(f"9Router network error ({e}), retrying in {backoff_sec}s...")
                     await asyncio.sleep(backoff_sec)
@@ -231,6 +233,7 @@ class ModelGateway:
                 logger.warning(f"9Router connection failed after {max_retries} attempts: {e}")
                 return None
             except Exception as e:
+                await self.close()
                 logger.warning(f"9Router call failed: {e}")
                 return None
 

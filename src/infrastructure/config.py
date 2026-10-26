@@ -39,9 +39,10 @@ class Settings(BaseSettings):
     LLM_DATA_POLICY: str = "redacted_dev_router"
     LLM_GATEWAY_URL: str = "http://127.0.0.1:20128/v1"
     LLM_GATEWAY_KEY: str = ""
-    LLM_MODEL_JD_COMPILER: str = "ag/gemini-3.8-flash-high"
-    LLM_MODEL_VERIFIER: str = "ag/gemini-3.8-flash-high"
-    LLM_MODEL_PROFILER: str = "ag/gemini-3.8-flash-high"
+    LLM_MODEL_JD_COMPILER: str = "ag/gemini-3.8-flash"
+    LLM_MODEL_VERIFIER: str = "ag/gemini-3.8-flash"
+    LLM_MODEL_PROFILER: str = "ag/gemini-3.8-flash"
+    LLM_MODEL_MATCHER: str = "ag/gemini-3.8-flash"
     LLM_MODEL_CRITIC: str = "cc/claude-sonnet-5-5"
     LLM_TEMPERATURE: float = 0.0
     VERIFIER_CONCURRENCY: int = 5

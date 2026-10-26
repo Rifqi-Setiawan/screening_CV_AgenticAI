@@ -579,6 +579,8 @@ Kualifikasi:
       if (res.ok) {
         setUploadedFiles([])
         setCandidates([])
+        setCurrentRunId(null)
+        setSelectedCandidate(null)
       } else {
         alert('Gagal mengosongkan berkas CV dari server.')
       }

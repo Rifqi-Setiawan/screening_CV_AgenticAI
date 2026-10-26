@@ -220,14 +220,161 @@ async def clear_job_cvs(
     job_id: uuid.UUID,
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.RECRUITER])),
 ) -> dict[str, Any]:
-    """Clears all uploaded documents, profiles, and score artifacts for a job."""
+    """Clears all uploaded documents, candidate profiles, screening runs, and evaluation artifacts for a job."""
     async with get_connection() as conn, conn.cursor() as cur:
         await get_job_for_tenant(cur, job_id, current_user.tenant_id)
+
+        # 1. Cancel / delete any pending jobs in jobs_queue for this job
+        await cur.execute(
+            """
+            DELETE FROM jobs_queue
+            WHERE (payload->>'job_id') = %s
+            """,
+            (str(job_id),),
+        )
+
+        # 2. Break self-referential / circular foreign keys
+        await cur.execute(
+            """
+            UPDATE documents SET duplicate_of = NULL
+            WHERE job_id = %s AND tenant_id = %s
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            UPDATE screening_runs SET parent_run_id = NULL
+            WHERE job_id = %s AND tenant_id = %s
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            UPDATE experience_entries SET header_atom_id = NULL
+            WHERE profile_id IN (
+                SELECT id FROM candidate_profiles 
+                WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                  AND tenant_id = %s
+            )
+            """,
+            (job_id, current_user.tenant_id, current_user.tenant_id),
+        )
+
+        # 3. Delete screening run downstream tables
+        await cur.execute(
+            """
+            DELETE FROM critic_reviews
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM facet_judgments
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM domain_durations
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
         await cur.execute(
             """
             DELETE FROM candidate_scores
-            WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
-              AND tenant_id = %s
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+               OR document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id, job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM requirement_scores
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM evidence
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM reviews
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM candidate_eligibility
+            WHERE run_id IN (SELECT id FROM screening_runs WHERE job_id = %s AND tenant_id = %s)
+               OR document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+            """,
+            (job_id, current_user.tenant_id, job_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM screening_runs
+            WHERE job_id = %s AND tenant_id = %s
+            """,
+            (job_id, current_user.tenant_id),
+        )
+
+        # 4. Delete profile, atom, experience, and skill downstream tables
+        await cur.execute(
+            """
+            DELETE FROM experience_domain_allocations
+            WHERE experience_id IN (
+                SELECT id FROM experience_entries
+                WHERE profile_id IN (
+                    SELECT id FROM candidate_profiles 
+                    WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                      AND tenant_id = %s
+                )
+            )
+            """,
+            (job_id, current_user.tenant_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM atom_tags
+            WHERE atom_id IN (
+                SELECT id FROM evidence_atoms
+                WHERE profile_id IN (
+                    SELECT id FROM candidate_profiles 
+                    WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                      AND tenant_id = %s
+                )
+            )
+            """,
+            (job_id, current_user.tenant_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM experience_entries
+            WHERE profile_id IN (
+                SELECT id FROM candidate_profiles 
+                WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                  AND tenant_id = %s
+            )
+            """,
+            (job_id, current_user.tenant_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
+            DELETE FROM evidence_atoms
+            WHERE profile_id IN (
+                SELECT id FROM candidate_profiles 
+                WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                  AND tenant_id = %s
+            )
             """,
             (job_id, current_user.tenant_id, current_user.tenant_id),
         )
@@ -244,16 +391,29 @@ async def clear_job_cvs(
         )
         await cur.execute(
             """
+            DELETE FROM skill_mentions
+            WHERE profile_id IN (
+                SELECT id FROM candidate_profiles 
+                WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
+                  AND tenant_id = %s
+            )
+            """,
+            (job_id, current_user.tenant_id, current_user.tenant_id),
+        )
+        await cur.execute(
+            """
             DELETE FROM candidate_profiles
             WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
               AND tenant_id = %s
             """,
             (job_id, current_user.tenant_id, current_user.tenant_id),
         )
+
+        # 5. Delete document-level artifacts and documents
         await cur.execute(
             """
-            UPDATE documents SET duplicate_of = NULL
-            WHERE job_id = %s AND tenant_id = %s
+            DELETE FROM redaction_offset_maps
+            WHERE document_id IN (SELECT id FROM documents WHERE job_id = %s AND tenant_id = %s)
             """,
             (job_id, current_user.tenant_id),
         )
