@@ -1965,8 +1965,8 @@ Persyaratan:
                       <th className="py-2.5 px-3">Nama Berkas</th>
                       <th className="py-2.5 px-3 w-24">Ukuran</th>
                       <th className="py-2.5 px-3 w-36">Status</th>
-                      <th className="py-2.5 px-3">Catatan / Alasan Pemeriksaan</th>
-                      <th className="py-2.5 px-3 w-20 text-center">Aksi</th>
+                      <th className="py-2.5 px-3 max-w-xs">Catatan / Alasan Pemeriksaan</th>
+                      <th className="py-2.5 px-3 w-24 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1989,7 +1989,7 @@ Persyaratan:
                             ) : (
                               <FileCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                             )}
-                            <span className="truncate max-w-xs">{file.name}</span>
+                            <span className="truncate max-w-[200px]" title={file.name}>{file.name}</span>
                           </td>
                           <td className="py-2 px-3 text-slate-500 font-mono text-[11px]">{file.size}</td>
                           <td className="py-2 px-3">
@@ -2019,7 +2019,7 @@ Persyaratan:
                               </span>
                             </span>
                           </td>
-                          <td className="py-2 px-3 text-slate-500 text-[11px] italic">
+                          <td className="py-2 px-3 text-slate-500 text-[11px] italic max-w-xs truncate" title={file.reason}>
                             {file.reason || 'Ekstraksi identitas & keahlian terverifikasi'}
                           </td>
                           <td className="py-2 px-3 text-center">
@@ -2029,7 +2029,7 @@ Persyaratan:
                                   <button
                                     type="button"
                                     onClick={() => handleRetrySingleCv(file.id)}
-                                    className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded transition-colors"
                                     title="Coba proses ulang berkas ini"
                                   >
                                     <RotateCcw className="w-3.5 h-3.5" />
@@ -2037,7 +2037,7 @@ Persyaratan:
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteSingleCv(file.id, file.name)}
-                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                    className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded transition-colors"
                                     title="Hapus berkas ini dari perankingan"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
