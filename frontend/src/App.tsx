@@ -5,7 +5,6 @@ import {
   Upload,
   Trophy,
   Eye,
-  EyeOff,
   CheckCircle2,
   AlertTriangle,
   FileCheck,
@@ -29,7 +28,7 @@ import { ROLE_TEMPLATES } from './jobTemplates'
 export default function App() {
   // Navigation & Workflow state
   const [currentStep, setCurrentStep] = useState<'setup' | 'requirements' | 'upload' | 'leaderboard'>('setup')
-  const [blindMode, setBlindMode] = useState<boolean>(true)
+  const [blindMode] = useState<boolean>(true)
   
   // Job Setup state
   const [jobTitle, setJobTitle] = useState('Senior Backend Engineer')
@@ -979,47 +978,63 @@ Kualifikasi:
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
       {/* Top Application Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-3 flex items-center justify-between shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-            CV
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+        {/* Left Section: Brand & Active Job Context */}
+        <div className="flex items-center space-x-3.5">
+          {/* Brand Logo & Name */}
+          <div className="flex items-center space-x-2.5">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-700 to-indigo-500 flex items-center justify-center text-white font-extrabold text-sm shadow-xs tracking-wider">
+              CV
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-bold text-slate-900 tracking-tight">AI CV Screening</span>
+              <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded-md">
+                v2.1
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 leading-tight">AI CV Screening & Ranking</h1>
-            {availableJobs.length > 0 ? (
-              <div className="flex items-center space-x-2 mt-1">
-                <span className="text-xs text-slate-500 font-medium hidden sm:inline">Lowongan:</span>
-                <select
-                  value={currentJobId || ''}
-                  onChange={(e) => {
-                    const selected = availableJobs.find((j) => j.id === e.target.value)
-                    if (selected) selectJob(selected.id, selected.title)
-                  }}
-                  className="text-xs bg-slate-50 hover:bg-white border border-slate-300 font-bold text-indigo-950 rounded-md px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-[200px] max-w-[340px] truncate shadow-2xs transition-colors"
-                >
-                  {availableJobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.title}
-                    </option>
-                  ))}
-                </select>
+
+          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+          {/* Job Selector & Actions */}
+          {availableJobs.length > 0 ? (
+            <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200/90 rounded-lg p-1 shadow-2xs">
+              <div className="flex items-center pl-1.5 pr-1 space-x-1 text-slate-500 text-xs">
+                <Briefcase className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="font-medium text-slate-600 hidden md:inline">Lowongan:</span>
+              </div>
+              <select
+                value={currentJobId || ''}
+                onChange={(e) => {
+                  const selected = availableJobs.find((j) => j.id === e.target.value)
+                  if (selected) selectJob(selected.id, selected.title)
+                }}
+                className="text-xs bg-white border border-slate-200 font-semibold text-slate-800 rounded-md px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-[170px] max-w-[260px] lg:max-w-[340px] truncate shadow-2xs transition-colors cursor-pointer"
+              >
+                {availableJobs.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.title}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center space-x-1">
                 <button
                   type="button"
                   onClick={handleRenameJob}
                   disabled={!currentJobId}
-                  className="h-7 w-7 inline-flex items-center justify-center text-slate-500 hover:text-indigo-600 bg-white hover:bg-indigo-50/60 rounded-md border border-slate-200 hover:border-indigo-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs"
+                  className="h-6.5 w-6.5 inline-flex items-center justify-center text-slate-500 hover:text-indigo-600 bg-white hover:bg-indigo-50/70 rounded-md border border-slate-200 hover:border-indigo-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs"
                   title="Ubah Nama Lowongan (Rename)"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="w-3 h-3" />
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteJob}
                   disabled={!currentJobId}
-                  className="h-7 w-7 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 rounded-md border border-slate-200 hover:border-rose-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs"
+                  className="h-6.5 w-6.5 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 rounded-md border border-slate-200 hover:border-rose-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs"
                   title="Hapus Lowongan Ini (Delete)"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
                 </button>
                 <button
                   type="button"
@@ -1035,25 +1050,25 @@ Kualifikasi:
                     setCriteriaApproved(false)
                     setCurrentStep('setup')
                   }}
-                  className="h-7 px-2.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-md font-semibold transition-all flex items-center space-x-1 shadow-2xs"
+                  className="h-6.5 px-2 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium transition-all flex items-center space-x-1 shadow-2xs"
                   title="Buat Lowongan Baru"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Baru</span>
+                  <Plus className="w-3 h-3" />
+                  <span className="hidden sm:inline font-semibold">Baru</span>
                 </button>
               </div>
-            ) : (
-              <p className="text-xs text-slate-500">Platform Evaluasi & Pemeringkatan Kandidat Berpresisi Tinggi</p>
-            )}
-          </div>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 font-medium hidden sm:inline">Platform Evaluasi & Pemeringkatan Kandidat Berpresisi Tinggi</p>
+          )}
         </div>
 
-        {/* Global Progress Stepper */}
-        <nav className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg text-xs font-medium">
+        {/* Right Section: Global Workflow Stepper */}
+        <nav className="flex items-center space-x-1 bg-slate-100/90 border border-slate-200/60 p-1 rounded-xl text-xs font-medium shadow-2xs">
           <button
             onClick={() => setCurrentStep('setup')}
-            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-all ${
-              currentStep === 'setup' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+              currentStep === 'setup' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <Briefcase className="w-3.5 h-3.5" />
@@ -1061,18 +1076,18 @@ Kualifikasi:
           </button>
           <button
             onClick={() => setCurrentStep('requirements')}
-            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-all ${
-              currentStep === 'requirements' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+              currentStep === 'requirements' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
             <span>1b. Kriteria ({requirements.length})</span>
-            {criteriaApproved && <CheckCircle2 className="w-3 h-3 text-emerald-600 ml-1" />}
+            {criteriaApproved && <CheckCircle2 className="w-3 h-3 text-emerald-600 ml-0.5" />}
           </button>
           <button
             onClick={() => setCurrentStep('upload')}
-            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-all ${
-              currentStep === 'upload' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+              currentStep === 'upload' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -1082,8 +1097,8 @@ Kualifikasi:
           </button>
           <button
             onClick={() => setCurrentStep('leaderboard')}
-            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-all ${
-              currentStep === 'leaderboard' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+              currentStep === 'leaderboard' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <Trophy className="w-3.5 h-3.5 text-amber-500" />
@@ -1092,24 +1107,6 @@ Kualifikasi:
             </span>
           </button>
         </nav>
-
-        {/* Global Controls */}
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setBlindMode(!blindMode)}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-              blindMode
-                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                : 'bg-slate-100 border-slate-300 text-slate-700'
-            }`}
-          >
-            {blindMode ? <EyeOff className="w-3.5 h-3.5 text-indigo-600" /> : <Eye className="w-3.5 h-3.5 text-slate-600" />}
-            <span>Blind Mode: <strong>{blindMode ? 'AKTIF' : 'NONAKTIF'}</strong></span>
-          </button>
-          <span className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md font-mono">
-            Admin/Recruiter
-          </span>
-        </div>
       </header>
 
       {/* Mandatory Objective Reminder Banner */}
