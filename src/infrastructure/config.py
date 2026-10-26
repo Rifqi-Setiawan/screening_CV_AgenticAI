@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     ELIGIBILITY_FOUR_EYES: bool = True
     ALLOW_RELIGION_CRITERIA: bool = True
     ALLOW_GENDER_CRITERIA: bool = True
+    ALLOW_AGE_CRITERIA: bool = True
 
     # Taxonomy & Domain Configuration
     TAXONOMY_DIR: str = "config/taxonomy"

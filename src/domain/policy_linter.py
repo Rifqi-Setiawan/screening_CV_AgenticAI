@@ -102,6 +102,8 @@ def lint_text(text: str) -> dict[str, Any]:
     for category, patterns in ADMIN_DEMOGRAPHIC_RULES.items():
         if category == "gender" and settings.ALLOW_GENDER_CRITERIA:
             continue
+        if category == "age" and settings.ALLOW_AGE_CRITERIA:
+            continue
         for pat in patterns:
             if re.search(pat, text_lower):
                 admin_flags.append(f"ADMIN_ONLY_{category.upper()}")
