@@ -22,7 +22,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { CandidateDetail, Requirement } from './types'
-import { INITIAL_REQUIREMENTS } from './mockData'
 import { ROLE_TEMPLATES } from './jobTemplates'
 
 export default function App() {
@@ -31,36 +30,30 @@ export default function App() {
   const [blindMode] = useState<boolean>(true)
   
   // Job Setup state
-  const [jobTitle, setJobTitle] = useState('Senior Backend Engineer')
+  const [jobTitle, setJobTitle] = useState('Backend Developer - Sharing Happiness')
   const [jobLocation, setJobLocation] = useState('Jakarta / Hybrid')
   const [jobType, setJobType] = useState('Penuh Waktu (Full-time)')
   const [jobDescription, setJobDescription] = useState(
-    `Kami mencari Senior Backend Engineer untuk bergabung dengan tim platform core kami.
-Tanggung Jawab:
-- Membangun RESTful API dan arsitektur microservices yang berjalan di production berskala besar.
-- Merancang, memelihara, dan mengoptimalkan basis data PostgreSQL.
-- Mengembangkan layanan backend dengan Python (FastAPI / Django).
-- Mengelola deployment menggunakan Docker dan Kubernetes di cloud (AWS/GCP).
-- Membimbing engineer junior dan melakukan code review.
+    `Sharing Happiness mencari Backend Developer yang bertanggung jawab merancang, mengembangkan, dan memelihara REST API performa tinggi, integrasi sistem pembayaran (payment gateway), manajemen basis data relasional (PostgreSQL/MySQL), serta arsitektur backend yang aman dan terukur.
 
-Kualifikasi:
-- Minimal 3 tahun pengalaman kerja relevan sebagai Backend Engineer.
-- Menguasai Python (FastAPI/Django) dan PostgreSQL.
-- Berpengalaman dengan container Docker dan Kubernetes/cloud.
-- Pendidikan S1 Teknik Informatika, Ilmu Komputer, atau setara.
-- Memiliki sertifikasi cloud arsitek merupakan nilai tambah.`
+Persyaratan:
+- Pengalaman kerja minimal 2 tahun sebagai Backend Developer atau Software Engineer berfokus pada backend.
+- Menguasai bahasa pemrograman backend seperti Golang, Python, PHP, atau Node.js.
+- Menguasai perancangan REST API dan integrasi sistem.
+- Mahir dalam pengelolaan basis data relasional (PostgreSQL/MySQL) dan optimasi kueri.
+- Memahami clean code, unit testing, dan Git version control.`
   )
 
-  // Requirements state
-  const [requirements, setRequirements] = useState<Requirement[]>(INITIAL_REQUIREMENTS)
+  // Requirements state (Start empty for live demo from scratch)
+  const [requirements, setRequirements] = useState<Requirement[]>([])
   const [categoryWeights, setCategoryWeights] = useState<Record<string, number>>({
     EXPERIENCE: 40,
     HARD_SKILLS: 30,
     EDUCATION_CERT: 15,
     ACHIEVEMENT: 15,
   })
-  const [criteriaApproved, setCriteriaApproved] = useState<boolean>(true)
-  const [criteriaVersion, setCriteriaVersion] = useState<number>(1)
+  const [criteriaApproved, setCriteriaApproved] = useState<boolean>(false)
+  const [criteriaVersion, setCriteriaVersion] = useState<number>(0)
   const [newReqDesc, setNewReqDesc] = useState('')
   const [newReqCategory, setNewReqCategory] = useState<string>('HARD_SKILLS')
   const [newReqImportance, setNewReqImportance] = useState<string>('MUST_HAVE')
@@ -1063,7 +1056,7 @@ Kualifikasi:
           )}
         </div>
 
-        {/* Right Section: Global Workflow Stepper */}
+        {/* Right Section: Global Workflow Stepper with Strict Gating */}
         <nav className="flex items-center space-x-1 bg-slate-100/90 border border-slate-200/60 p-1 rounded-xl text-xs font-medium shadow-2xs">
           <button
             onClick={() => setCurrentStep('setup')}
@@ -1075,20 +1068,32 @@ Kualifikasi:
             <span>1. Setup Lowongan</span>
           </button>
           <button
-            onClick={() => setCurrentStep('requirements')}
-            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
-              currentStep === 'requirements' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            onClick={() => requirements.length > 0 && setCurrentStep('requirements')}
+            disabled={requirements.length === 0}
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
+              currentStep === 'requirements'
+                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                : requirements.length > 0
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer'
+                : 'text-slate-400 opacity-40 cursor-not-allowed'
             }`}
+            title={requirements.length === 0 ? 'Klik Ekstrak Kriteria terlebih dahulu' : '1b. Kriteria'}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>1b. Kriteria ({requirements.length})</span>
+            <span>1b. Kriteria{requirements.length > 0 ? ` (${requirements.length})` : ''}</span>
             {criteriaApproved && <CheckCircle2 className="w-3 h-3 text-emerald-600 ml-0.5" />}
           </button>
           <button
-            onClick={() => setCurrentStep('upload')}
-            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
-              currentStep === 'upload' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            onClick={() => criteriaApproved && setCurrentStep('upload')}
+            disabled={!criteriaApproved}
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
+              currentStep === 'upload'
+                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                : criteriaApproved
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer'
+                : 'text-slate-400 opacity-40 cursor-not-allowed'
             }`}
+            title={!criteriaApproved ? 'Kunci kriteria di step 1b terlebih dahulu' : '2. Upload CV'}
           >
             <Upload className="w-3.5 h-3.5" />
             <span>
@@ -1096,12 +1101,18 @@ Kualifikasi:
             </span>
           </button>
           <button
-            onClick={() => setCurrentStep('leaderboard')}
-            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
-              currentStep === 'leaderboard' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            onClick={() => candidates.length > 0 && setCurrentStep('leaderboard')}
+            disabled={candidates.length === 0}
+            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
+              currentStep === 'leaderboard'
+                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                : candidates.length > 0
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer'
+                : 'text-slate-400 opacity-40 cursor-not-allowed'
             }`}
+            title={candidates.length === 0 ? 'Jalankan screening terlebih dahulu' : '3. Leaderboard'}
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            <Trophy className={`w-3.5 h-3.5 ${candidates.length > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
             <span>
               3. Leaderboard{candidates.length > 0 ? ` (${candidates.length})` : ''}
             </span>
