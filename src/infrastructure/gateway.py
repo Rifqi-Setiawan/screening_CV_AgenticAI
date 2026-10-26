@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from src.domain.pii import EMAIL_REGEX, PHONE_REGEX
+from src.domain.pii import EMAIL_REGEX, PHONE_REGEX, sanitize_contact_pii
 from src.infrastructure.config import settings
 from src.infrastructure.database import get_connection
 from src.infrastructure.logging import logger
@@ -114,7 +114,10 @@ class ModelGateway:
             logger.warning("LLM call skipped: policy 'paid_or_local_only' restricts dev router usage.")
             return None
 
-        # Pre-flight safety inspection
+        # Pre-flight safety inspection & auto-sanitization
+        for m in messages:
+            if "content" in m and isinstance(m["content"], str):
+                m["content"] = sanitize_contact_pii(m["content"])
         combined_prompt = " ".join([m.get("content", "") for m in messages])
         self.verify_redacted_text(combined_prompt)
 

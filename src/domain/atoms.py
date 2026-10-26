@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from src.domain.pii import sanitize_contact_pii
+
 
 class AtomKind(str, Enum):
     EXP_HEADER = "exp_header"
@@ -338,6 +340,9 @@ def _resolve_atom(
         text_red = redacted_text[red_start:red_end].strip()
     else:
         text_red = clean_text
+
+    if text_red:
+        text_red = sanitize_contact_pii(text_red)
 
     page = int(source.get("page", 1))
     bbox = source.get("bbox")

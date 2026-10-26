@@ -17,6 +17,7 @@ from src.worker.adapter import extract_candidate_profile
 from src.worker.embedding import embed_texts
 from src.worker.redaction import extract_identity_and_redact, redact_text
 from src.worker.sanitizer import sanitize_file
+from src.domain.pii import EMAIL_REGEX, PHONE_REGEX
 
 
 async def process_document(doc_id: uuid.UUID) -> dict[str, Any]:
@@ -302,6 +303,10 @@ async def process_document(doc_id: uuid.UUID) -> dict[str, Any]:
             # 7b. Run Profiling Pipeline (Graph A) to generate and save evidence atoms, offset map, experiences, allocations, and tags
             pii_spans_list: list[tuple[int, int, str]] = []
             if san.extracted_text:
+                for m in EMAIL_REGEX.finditer(san.extracted_text):
+                    pii_spans_list.append((m.start(), m.end(), "[EMAIL]"))
+                for m in PHONE_REGEX.finditer(san.extracted_text):
+                    pii_spans_list.append((m.start(), m.end(), "[TELEPON]"))
                 for target, repl in [
                     (email_val, "[EMAIL]"),
                     (phone_val, "[TELEPON]"),
