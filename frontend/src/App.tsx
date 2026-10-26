@@ -101,7 +101,7 @@ Persyaratan:
   const isPollingRef = useRef<boolean>(false)
 
   // Uploaded files list
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; status: 'ready' | 'processing' | 'review' | 'unqualified' | 'duplicate'; reason?: string }>>([])
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ id?: string; name: string; size: string; status: 'ready' | 'processing' | 'review' | 'unqualified' | 'duplicate'; reason?: string }>>([])
 
   // Candidates & Leaderboard state
   const [candidates, setCandidates] = useState<CandidateDetail[]>([])
@@ -427,6 +427,7 @@ Persyaratan:
         const rawDocs = data.documents || data.files || []
         if (Array.isArray(rawDocs) && rawDocs.length > 0) {
           const mapped = rawDocs.map((f: any) => ({
+            id: f.id,
             name: f.filename,
             size: f.size_bytes ? `${Math.round(f.size_bytes / 1024)} KB` : 'Terproses',
             status:
@@ -446,6 +447,8 @@ Persyaratan:
                 ? 'Berkas duplikat identik (sudah diunggah sebelumnya)'
                 : f.reasons && f.reasons.length > 0
                 ? f.reasons.join(', ')
+                : f.flags && f.flags.length > 0
+                ? f.flags.join(', ')
                 : f.status === 'PROCESSING' || f.status === 'RECEIVED'
                 ? 'Sedang diekstrak dan dianalisis oleh server...'
                 : 'Ekstraksi identitas & keahlian terverifikasi',
@@ -603,6 +606,55 @@ Persyaratan:
       }
     } catch (e: any) {
       alert(`Terjadi kesalahan: ${e.message}`)
+    }
+  }
+
+  const handleDeleteSingleCv = async (docId?: string, fileName?: string) => {
+    if (!docId) return
+    const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus berkas "${fileName || 'ini'}" dari perankingan?`)
+    if (!confirmed) return
+    try {
+      const jId = currentJobId || (await ensureJobExists())
+      const res = await fetch(`/api/v1/jobs/${jId}/cvs/${docId}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+      if (res.ok) {
+        setUploadedFiles((prev) => prev.filter((f) => f.id !== docId))
+        if (currentRunId && currentJobId) {
+          fetchLatestLeaderboard(currentJobId, 1)
+        }
+      } else {
+        alert('Gagal menghapus berkas CV dari server.')
+      }
+    } catch (e) {
+      console.warn('Error deleting single CV:', e)
+      alert('Gagal menghubungi server saat menghapus berkas.')
+    }
+  }
+
+  const handleRetrySingleCv = async (docId?: string) => {
+    if (!docId) return
+    try {
+      const jId = currentJobId || (await ensureJobExists())
+      const res = await fetch(`/api/v1/jobs/${jId}/cvs/${docId}/retry`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders() },
+      })
+      if (res.ok) {
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === docId
+              ? { ...f, status: 'processing', reason: 'Sedang diproses ulang oleh sistem...' }
+              : f
+          )
+        )
+        startPollingJobCvs(jId)
+      } else {
+        alert('Gagal menjadwalkan proses ulang berkas.')
+      }
+    } catch (e) {
+      console.warn('Error retrying single CV:', e)
     }
   }
 
@@ -1914,12 +1966,13 @@ Persyaratan:
                       <th className="py-2.5 px-3 w-24">Ukuran</th>
                       <th className="py-2.5 px-3 w-36">Status</th>
                       <th className="py-2.5 px-3">Catatan / Alasan Pemeriksaan</th>
+                      <th className="py-2.5 px-3 w-20 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {uploadedFiles.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
+                        <td colSpan={5} className="py-8 text-center text-slate-400">
                           <FileText className="w-8 h-8 mx-auto mb-1 text-slate-300" />
                           <p className="font-medium text-slate-600">Belum ada berkas CV yang diunggah.</p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1968,6 +2021,30 @@ Persyaratan:
                           </td>
                           <td className="py-2 px-3 text-slate-500 text-[11px] italic">
                             {file.reason || 'Ekstraksi identitas & keahlian terverifikasi'}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <div className="flex items-center justify-center space-x-1.5">
+                              {file.id && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetrySingleCv(file.id)}
+                                    className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                    title="Coba proses ulang berkas ini"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSingleCv(file.id, file.name)}
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                    title="Hapus berkas ini dari perankingan"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -2280,6 +2357,92 @@ Persyaratan:
                 </tbody>
               </table>
             </div>
+
+            {/* Box: Berkas Bermasalah / Dikecualikan dari Penilaian */}
+            {uploadedFiles.some((f) => f.status === 'review' || f.status === 'unqualified' || f.status === 'duplicate') && (
+              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-5 shadow-2xs space-y-3 mt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="p-1.5 bg-amber-100 text-amber-800 rounded-lg">
+                      <AlertTriangle className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-950">
+                        Berkas Dikecualikan dari Penilaian Otomatis (
+                        {uploadedFiles.filter((f) => f.status === 'review' || f.status === 'unqualified' || f.status === 'duplicate').length} Berkas)
+                      </h4>
+                      <p className="text-[11px] text-amber-800">
+                        Berkas di bawah ini tidak masuk ke dalam Leaderboard karena terdeteksi format scan gambar, OCR rusak/noise, duplikat, atau butuh pemeriksaan manual.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-amber-200/80 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-amber-50 text-amber-900 font-semibold uppercase tracking-wider border-b border-amber-200/80">
+                      <tr>
+                        <th className="py-2.5 px-3">Nama Berkas</th>
+                        <th className="py-2.5 px-3 w-36">Status</th>
+                        <th className="py-2.5 px-3">Alasan / Catatan Kendala</th>
+                        <th className="py-2.5 px-3 w-32 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100">
+                      {uploadedFiles
+                        .filter((f) => f.status === 'review' || f.status === 'unqualified' || f.status === 'duplicate')
+                        .map((f, i) => (
+                          <tr key={f.id || i} className="hover:bg-amber-50/40">
+                            <td className="py-2.5 px-3 font-medium text-slate-900">
+                              <span className="truncate max-w-sm block" title={f.name}>{f.name}</span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                f.status === 'review'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : f.status === 'duplicate'
+                                  ? 'bg-slate-100 text-slate-700 border border-slate-300'
+                                  : 'bg-rose-100 text-rose-800 border border-rose-300'
+                              }`}>
+                                {f.status === 'review' ? '⚠️ Perlu Cek Manual' : f.status === 'duplicate' ? 'Duplikat' : '⛔ Dikecualikan'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 text-[11px] italic">
+                              {f.reason || 'Kualitas teks rendah atau scan dokumen tidak terstruktur'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <div className="flex items-center justify-center space-x-1.5">
+                                {f.id && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRetrySingleCv(f.id)}
+                                      className="px-2 py-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium rounded shadow-2xs flex items-center space-x-1"
+                                      title="Coba proses ulang dokumen ini"
+                                    >
+                                      <RotateCcw className="w-3 h-3 text-indigo-600" />
+                                      <span>Ulang</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSingleCv(f.id, f.name)}
+                                      className="px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-medium rounded shadow-2xs flex items-center space-x-1"
+                                      title="Hapus berkas ini dari lowongan"
+                                    >
+                                      <Trash2 className="w-3 h-3 text-rose-600" />
+                                      <span>Hapus</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

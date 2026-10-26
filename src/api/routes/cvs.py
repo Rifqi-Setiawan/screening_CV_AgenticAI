@@ -429,6 +429,131 @@ async def clear_job_cvs(
     return {"status": "SUCCESS", "message": "All CVs for this job opening have been cleared successfully."}
 
 
+@router.delete("/api/v1/jobs/{job_id}/cvs/{document_id}", status_code=status.HTTP_200_OK)
+async def delete_single_cv(
+    job_id: uuid.UUID,
+    document_id: uuid.UUID,
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.RECRUITER])),
+) -> dict[str, Any]:
+    """Deletes a single candidate CV and all its associated artifacts from the job."""
+    async with get_connection() as conn, conn.cursor() as cur:
+        await get_job_for_tenant(cur, job_id, current_user.tenant_id)
+
+        # 1. Cancel / delete any pending queue tasks for this document
+        await cur.execute(
+            """
+            DELETE FROM jobs_queue
+            WHERE (payload->>'document_id') = %s
+            """,
+            (str(document_id),),
+        )
+
+        # 2. Clear duplicate references
+        await cur.execute(
+            """
+            UPDATE documents SET duplicate_of = NULL
+            WHERE duplicate_of = %s AND tenant_id = %s
+            """,
+            (document_id, current_user.tenant_id),
+        )
+
+        # 3. Delete downstream candidate scores and eligibility for this document
+        await cur.execute(
+            """
+            DELETE FROM candidate_scores
+            WHERE document_id = %s
+            """,
+            (document_id,),
+        )
+        await cur.execute(
+            """
+            DELETE FROM candidate_eligibility
+            WHERE document_id = %s
+            """,
+            (document_id,),
+        )
+
+        # 4. Find candidate profile
+        await cur.execute(
+            "SELECT id FROM candidate_profiles WHERE document_id = %s AND tenant_id = %s",
+            (document_id, current_user.tenant_id),
+        )
+        prof_rows = await cur.fetchall()
+        for p in prof_rows:
+            p_id = p["id"]
+            await cur.execute("UPDATE experience_entries SET header_atom_id = NULL WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM atom_evaluations WHERE atom_id IN (SELECT id FROM evidence_atoms WHERE profile_id = %s)", (p_id,))
+            await cur.execute("DELETE FROM evidence_atoms WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM profile_chunks WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM experience_entries WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM education_entries WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM skill_mentions WHERE profile_id = %s", (p_id,))
+            await cur.execute("DELETE FROM candidate_profiles WHERE id = %s", (p_id,))
+
+        # 5. Delete redaction offset maps and document
+        await cur.execute("DELETE FROM redaction_offset_maps WHERE document_id = %s", (document_id,))
+        await cur.execute(
+            "DELETE FROM documents WHERE id = %s AND job_id = %s AND tenant_id = %s RETURNING original_filename, storage_key",
+            (document_id, job_id, current_user.tenant_id),
+        )
+        deleted_doc = await cur.fetchone()
+        await conn.commit()
+
+        if deleted_doc:
+            try:
+                storage_path = Path(settings.STORAGE_VAULT_PATH) / str(current_user.tenant_id) / deleted_doc["storage_key"]
+                if storage_path.exists():
+                    storage_path.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to remove file from vault: {e}")
+
+        return {"status": "SUCCESS", "deleted_document_id": str(document_id)}
+
+
+@router.post("/api/v1/jobs/{job_id}/cvs/{document_id}/retry", status_code=status.HTTP_200_OK)
+async def retry_single_cv(
+    job_id: uuid.UUID,
+    document_id: uuid.UUID,
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.RECRUITER])),
+) -> dict[str, Any]:
+    """Retries ingestion processing for a single document."""
+    async with get_connection() as conn, conn.cursor() as cur:
+        await get_job_for_tenant(cur, job_id, current_user.tenant_id)
+
+        # Reset document status
+        await cur.execute(
+            """
+            UPDATE documents
+            SET status = 'RECEIVED', reasons = '{}', flags = '{}'
+            WHERE id = %s AND job_id = %s AND tenant_id = %s
+            RETURNING id, original_filename
+            """,
+            (document_id, job_id, current_user.tenant_id),
+        )
+        doc = await cur.fetchone()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Insert into jobs_queue
+        await cur.execute(
+            """
+            INSERT INTO jobs_queue (id, tenant_id, type, status, payload, max_attempts)
+            VALUES (gen_random_uuid(), %s, 'ingest_cv', 'PENDING', %s, 3)
+            """,
+            (
+                current_user.tenant_id,
+                json.dumps({
+                    "document_id": str(document_id),
+                    "tenant_id": str(current_user.tenant_id),
+                    "job_id": str(job_id),
+                }),
+            ),
+        )
+        await conn.commit()
+
+        return {"status": "QUEUED", "document_id": str(document_id), "message": "Proses ulang berkas dijadwalkan."}
+
+
 @router.get("/api/v1/jobs/{job_id}/extraction-export")
 @router.get("/api/v1/jobs/{job_id}/cvs/extraction-export")
 async def export_extractions(
