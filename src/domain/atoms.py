@@ -8,6 +8,7 @@ Implements Grounding by Construction:
 
 from __future__ import annotations
 
+import difflib
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -26,6 +27,7 @@ class AtomKind(str, Enum):
     EDUCATION = "education"
     CERT = "cert"
     SELF_CLAIM = "self_claim"
+    INTERVIEW_ANSWER = "interview_answer"
 
 
 @dataclass
@@ -240,6 +242,11 @@ class EvidenceAtom:
     bbox: list[float] | None = None
     id: uuid.UUID | None = None
 
+    @property
+    def span_verified(self) -> bool:
+        """True when the atom points at a real, non-empty span of the source document."""
+        return self.char_end > self.char_start
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "atom_key": self.atom_key,
@@ -272,6 +279,42 @@ class EvidenceAtom:
         )
 
 
+_WS = re.compile(r"\s+")
+SPAN_MATCH_MIN_RATIO = 0.9
+
+
+def _norm(text: str) -> str:
+    return _WS.sub(" ", text).strip().lower()
+
+
+def locate_span(haystack: str, needle: str) -> tuple[int, int] | None:
+    """Finds `needle` in `haystack`: exact first, then tolerant to whitespace / line-break differences.
+
+    Returns (start, end) offsets into `haystack`, or None when the text is not really in the document.
+    """
+    needle = needle.strip()
+    if not needle or not haystack:
+        return None
+    pos = haystack.find(needle)
+    if pos >= 0:
+        return pos, pos + len(needle)
+    tokens = needle.split()
+    if len(tokens) < 2 or len(needle) > 600:
+        return None
+    m = re.search(r"\s+".join(re.escape(t) for t in tokens), haystack, flags=re.IGNORECASE)
+    return (m.start(), m.end()) if m else None
+
+
+def span_matches_text(haystack: str, start: int, end: int, text: str) -> bool:
+    """Deterministic check that haystack[start:end] really is `text` (whitespace/case-insensitive, fuzzy >= 0.9)."""
+    if not (0 <= start < end <= len(haystack)) or not text.strip():
+        return False
+    a, b = _norm(haystack[start:end]), _norm(text)
+    if a == b or b in a:
+        return True
+    return difflib.SequenceMatcher(None, a, b).ratio() >= SPAN_MATCH_MIN_RATIO
+
+
 def _resolve_atom(
     atom_key: str,
     kind: str,
@@ -289,34 +332,38 @@ def _resolve_atom(
     if visibility == "HIDDEN":
         return None
 
-    # 2. Extract or locate character offsets
+    # 2. Extract or locate character offsets (grounding by construction: offsets must point at real text)
     orig_start = source.get("char_start")
     orig_end = source.get("char_end")
-
     clean_text = item_text.strip()
+
+    if (
+        clean_text
+        and raw_text
+        and orig_start is not None
+        and orig_end is not None
+        and orig_end > orig_start
+        and not span_matches_text(raw_text, int(orig_start), int(orig_end), clean_text)
+    ):
+        orig_start = orig_end = None  # provided offsets do not point at this text: re-locate or drop
+
     if (orig_start is None or orig_end is None or orig_end <= orig_start) and clean_text:
-        # Search in raw_text first
-        pos = raw_text.find(clean_text)
-        if pos >= 0:
-            orig_start = pos
-            orig_end = pos + len(clean_text)
+        found = locate_span(raw_text, clean_text)
+        if found:
+            orig_start, orig_end = found
         elif redacted_text:
-            # Search in redacted text and map back to raw_text
-            pos_red = redacted_text.find(clean_text)
-            if pos_red >= 0:
-                red_len = len(clean_text)
+            found_red = locate_span(redacted_text, clean_text)
+            if found_red:
+                pos_red, red_end_pos = found_red
                 if offset_map:
                     orig_start = offset_map.red_to_orig(pos_red)
-                    orig_end = offset_map.red_to_orig(pos_red + red_len)
+                    orig_end = offset_map.red_to_orig(red_end_pos)
                 else:
-                    orig_start = pos_red
-                    orig_end = pos_red + red_len
+                    orig_start, orig_end = pos_red, red_end_pos
             else:
-                orig_start = 0
-                orig_end = 0
+                orig_start = orig_end = 0
         else:
-            orig_start = 0
-            orig_end = 0
+            orig_start = orig_end = 0
     orig_start_val = int(orig_start) if orig_start is not None else 0
     orig_end_val = int(orig_end) if orig_end is not None else 0
 

@@ -108,6 +108,52 @@ def inspect_span_visibility(
     return SpanVisibility.VISIBLE
 
 
+# --- Render check: does the span actually put ink on the page? -------------------------------------
+# Text can sit in the text layer yet be invisible: colour equal to the background (not only pure white),
+# covered by a shape drawn later, or clipped. Rendering the page once and measuring the luminance range
+# under each span catches all of these without OCR.
+RENDER_SCALE = 2.0  # 144 dpi
+MIN_INK_RANGE = 16  # luminance (0..255) spread below which a span region is considered blank
+MIN_REGION_PIXELS = 6
+
+
+def _render_page_gray(page: Any, scale: float = RENDER_SCALE) -> Any | None:
+    """Renders a page to an 8-bit grayscale pixmap, or None when rendering is unavailable."""
+    try:
+        import fitz
+
+        return page.get_pixmap(matrix=fitz.Matrix(scale, scale), colorspace=fitz.csGRAY, alpha=False)
+    except Exception:
+        return None
+
+
+def span_has_ink(pix: Any, bbox: Any, scale: float = RENDER_SCALE) -> bool:
+    """True if the pixels under `bbox` show enough contrast to contain rendered text.
+
+    Unknown / degenerate regions return True (never flag what could not be measured).
+    """
+    if pix is None or bbox is None or len(bbox) < 4:
+        return True
+    try:
+        x0 = max(0, int(float(bbox[0]) * scale))
+        y0 = max(0, int(float(bbox[1]) * scale))
+        x1 = min(pix.width, int(float(bbox[2]) * scale) + 1)
+        y1 = min(pix.height, int(float(bbox[3]) * scale) + 1)
+        if x1 <= x0 or y1 <= y0 or (x1 - x0) * (y1 - y0) < MIN_REGION_PIXELS:
+            return True
+        samples = pix.samples
+        stride = pix.stride
+        lo, hi = 255, 0
+        for y in range(y0, y1):
+            row = samples[y * stride + x0 : y * stride + x1]
+            if row:
+                lo = min(lo, min(row))
+                hi = max(hi, max(row))
+        return (hi - lo) >= MIN_INK_RANGE
+    except Exception:
+        return True
+
+
 @dataclass
 class VisibilityFilterResult:
     visible_spans: list[dict[str, Any]]
@@ -130,6 +176,7 @@ class VisibilityFilterResult:
 def filter_visible_spans(
     doc_or_spans: Any,
     include_suspect: bool = True,
+    render_check: bool = True,
 ) -> VisibilityFilterResult:
     """Filters visible spans from a PyMuPDF document or a list of spans.
 
@@ -150,6 +197,7 @@ def filter_visible_spans(
                 blocks = text_dict.get("blocks", [])
             except Exception:
                 blocks = []
+            pix = _render_page_gray(page) if render_check else None
 
             for b in blocks:
                 for line in b.get("lines", []):
@@ -157,6 +205,16 @@ def filter_visible_spans(
                         span_copy = dict(span)
                         span_copy["page"] = page_num
                         vis = inspect_span_visibility(span_copy, page_rect)
+                        if pix is not None and str(span_copy.get("text", "")).strip():
+                            has_ink = span_has_ink(pix, span_copy.get("bbox"))
+                            if vis != SpanVisibility.HIDDEN and not has_ink:
+                                vis = SpanVisibility.HIDDEN
+                                span_copy["hidden_reason"] = "NO_RENDERED_INK"
+                            elif vis != SpanVisibility.VISIBLE and has_ink:
+                                # White / near-white text on a dark background renders ink: judge it without colour.
+                                neutral = inspect_span_visibility({**span_copy, "color": 0}, page_rect)
+                                if neutral == SpanVisibility.VISIBLE:
+                                    vis = SpanVisibility.VISIBLE
                         span_copy["visibility"] = vis.value
 
                         if vis == SpanVisibility.VISIBLE:

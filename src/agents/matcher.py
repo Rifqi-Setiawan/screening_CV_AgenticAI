@@ -12,11 +12,13 @@ Implements Section C2 S6 of the Blueprint:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import uuid
 from pathlib import Path
 from typing import Any
 
+from src.agents.prompt_safety import DATA_RULE, atom_text_for_llm, fence_untrusted, neutralize_for_fence
 from src.agents.schemas.matcher import (
     DepthLevel,
     FacetEvaluationInput,
@@ -39,7 +41,7 @@ def load_matcher_system_prompt() -> str:
     prompt_file = PROMPTS_DIR / "matcher_v1.md"
     if not prompt_file.exists():
         raise FileNotFoundError(f"Matcher system prompt not found at {prompt_file}")
-    return prompt_file.read_text(encoding="utf-8")
+    return prompt_file.read_text(encoding="utf-8") + "\n\n" + DATA_RULE
 
 
 def build_matcher_user_prompt(
@@ -63,7 +65,8 @@ def build_matcher_user_prompt(
         concepts_str = f" [concepts: {', '.join(concepts)}]" if concepts else ""
         lines.append(f'- Facet [{fkey}] ({core_str}, floor: {depth_floor}){concepts_str}: "{hyp}"')
 
-    lines.append("\n### Candidate Evidence Atoms:")
+    lines.append("\n### Candidate Evidence Atoms (untrusted document data):")
+    atom_lines: list[str] = []
     for a in atoms:
         akey = getattr(a, "atom_key", None) or (a.get("atom_key") if isinstance(a, dict) else "")
         akind = getattr(a, "kind", None) or (a.get("kind") if isinstance(a, dict) else "")
@@ -72,11 +75,12 @@ def build_matcher_user_prompt(
 
         claim_tag = " [CLAIM/MENTION_ONLY]" if akind in ("summary_sentence", "skill_list_item", "self_claim") else ""
         ref_str = f" [entry: {eref}]" if eref else ""
-        lines.append(f"- [{akey}] (kind: {akind}{ref_str}{claim_tag}): {text}")
+        atom_lines.append(f"- [{akey}] (kind: {akind}{ref_str}{claim_tag}): {atom_text_for_llm(str(text or ''))}")
+    lines.append(fence_untrusted("\n".join(atom_lines)))
 
     if raw_title:
         lines.append(
-            f"\n### Context Only (Weak Prior):\nCandidate's stated job title is '{raw_title}'. "
+            f"\n### Context Only (Weak Prior):\nCandidate's stated job title is '{neutralize_for_fence(raw_title)[:120]}'. "
             "WARNING: This title is provided strictly as background context. It MUST NOT be the sole basis "
             "for deciding whether facets are entailed or not entailed."
         )
@@ -208,16 +212,22 @@ async def run_matcher_agent(
     all_evaluations: list[FacetEvaluationResult] = []
     global_flags: list[str] = []
 
-    for i in range(0, len(facets), batch_size):
-        facet_chunk = facets[i : i + batch_size]
-        batch_output = await _call_matcher_single_batch(
-            facets=facet_chunk,
-            atoms=candidate_atoms,
-            client=client,
-            tenant_id=tenant_id,
-            raw_title=raw_title,
-            model=selected_model,
+    # Batches are independent: run them concurrently (the gateway caps in-flight requests globally).
+    chunks = [facets[i : i + batch_size] for i in range(0, len(facets), batch_size)]
+    batch_outputs = await asyncio.gather(
+        *(
+            _call_matcher_single_batch(
+                facets=chunk,
+                atoms=candidate_atoms,
+                client=client,
+                tenant_id=tenant_id,
+                raw_title=raw_title,
+                model=selected_model,
+            )
+            for chunk in chunks
         )
+    )
+    for batch_output in batch_outputs:
         all_evaluations.extend(batch_output.evaluations)
         global_flags.extend(batch_output.flags)
 

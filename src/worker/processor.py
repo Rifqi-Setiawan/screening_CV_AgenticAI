@@ -10,6 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from src.domain.pii import EMAIL_REGEX, PHONE_REGEX
 from src.infrastructure.config import settings
 from src.infrastructure.database import get_connection
 from src.infrastructure.logging import logger
@@ -17,7 +18,6 @@ from src.worker.adapter import extract_candidate_profile
 from src.worker.embedding import embed_texts
 from src.worker.redaction import extract_identity_and_redact, redact_text
 from src.worker.sanitizer import sanitize_file
-from src.domain.pii import EMAIL_REGEX, PHONE_REGEX
 
 
 async def process_document(doc_id: uuid.UUID) -> dict[str, Any]:
@@ -334,17 +334,31 @@ async def process_document(doc_id: uuid.UUID) -> dict[str, Any]:
                 else None
             )
 
-            profiling_result = await run_profiling_pipeline(
-                profile_id=profile_id,
-                raw_text=san.extracted_text,
-                candidate_profile=matching_profile,
-                pii_spans=clean_pii_spans,
-                document_id=doc_id,
-                tenant_id=doc["tenant_id"],
-                raw_title=raw_title,
-                save_to_db=True,
-                conn=conn,
-            )
+            # Visibility gate input: the PDF itself (spans, colours, rendered ink). None for other formats.
+            pdf_doc = None
+            if filename.lower().endswith(".pdf"):
+                try:
+                    import fitz
+
+                    pdf_doc = fitz.open(stream=content, filetype="pdf")
+                except Exception:
+                    pdf_doc = None
+            try:
+                profiling_result = await run_profiling_pipeline(
+                    profile_id=profile_id,
+                    raw_text=san.extracted_text,
+                    pdf_spans=pdf_doc,
+                    candidate_profile=matching_profile,
+                    pii_spans=clean_pii_spans,
+                    document_id=doc_id,
+                    tenant_id=doc["tenant_id"],
+                    raw_title=raw_title,
+                    save_to_db=True,
+                    conn=conn,
+                )
+            finally:
+                if pdf_doc is not None:
+                    pdf_doc.close()
             if profiling_result.flags:
                 quality_flags = list(set(quality_flags + profiling_result.flags))
 

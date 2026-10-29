@@ -34,6 +34,12 @@ def determine_atom_tier(
     if kind in ("skill_list_item", "summary_sentence", "self_claim"):
         return "T0"
 
+    # Interview answers carry their own provenance: spoken and probed, not documentary. The recruiter's rating
+    # decides the tier (STRONG -> T2, anything else -> T1); they never reach T3/T4 on a rating alone.
+    if kind == "interview_answer":
+        rating = atom.get("rating", "") if isinstance(atom, dict) else getattr(atom, "rating", "")
+        return "T2" if str(rating).upper() == "STRONG" else "T1"
+
     evidence_type = None
     impact_quantified = False
 

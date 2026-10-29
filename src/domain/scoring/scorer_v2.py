@@ -17,6 +17,7 @@ from typing import Any
 
 from src.agents.schemas.matcher import FacetEvaluationResult
 from src.domain.atoms import AtomKind, EvidenceAtom
+from src.infrastructure.config import settings
 
 STATE_VALUE: dict[str, float] = {
     "STRONG": 1.0,
@@ -34,6 +35,9 @@ DEFAULT_DEPTH_FACTORS: dict[str, float] = {
 }
 
 MAX_SUPPORTING_ATOMS_PER_FACET: int = 3
+
+# A candidate whose score interval straddles this value may or may not be shortlisted.
+SHORTLIST_CUTOFF: float = 70.0
 
 BAND_CAP: dict[str, float] = {
     "A": 100.0,
@@ -73,10 +77,13 @@ class ScoreResultV2:
     must_have_not_strong: list[str] = field(default_factory=list)
     coverage: float = 1.0
     flags: list[str] = field(default_factory=list)
-    scoring_version: str = "v2.1"
+    scoring_version: str = "v2.2"
     depth_breakdown: dict[str, str] = field(default_factory=dict)
     effective_states: dict[str, str] = field(default_factory=dict)
     anti_stuffing_flags: list[str] = field(default_factory=list)
+    score_lo: float = 0.0
+    score_hi: float = 0.0
+    interval_straddles_boundary: bool = False
 
     @property
     def category_breakdown(self) -> dict[str, float]:
@@ -129,6 +136,7 @@ def score_v2(
     depth_levels: dict[str, str] | None = None,
     depth_factors_override: dict[str, float] | None = None,
     flags: list[str] | None = None,
+    apply_depth: bool = True,
 ) -> ScoreResultV2:
     """Deterministic Scorer v2 with anti-keyword stuffing and depth weighting.
 
@@ -205,7 +213,8 @@ def score_v2(
 
                         depth_val = j.get("depth_level")
                         if depth_val:
-                            req_depths.append(str(depth_val).upper())
+                            # enum members (DepthLevel.L2) and plain strings both end up as "L2"
+                            req_depths.append(str(getattr(depth_val, "value", depth_val)).upper())
 
         # Check explicit depth_levels input
         if depth_levels and rid in depth_levels:
@@ -240,10 +249,9 @@ def score_v2(
 
     # Compute numerical scores
     num = den = 0.0
-    cat_num: dict[str, float] = {}
-    cat_den: dict[str, float] = {}
     must_not_strong: list[str] = []
     must_unknown: list[str] = []
+    items: list[tuple[str, float, float | None]] = []  # (category, weight, value or None when UNKNOWN)
 
     for r in reqs:
         rid = r["requirement_id"]
@@ -253,7 +261,7 @@ def score_v2(
 
         # Depth factor applies to both STRONG and PARTIAL (C5)
         # When depth evaluation is inactive (no depths passed), depth_factor=1.0
-        depth_factor = depth_map.get(depth_level, 1.0) if (facet_judgments or depth_levels) else 1.0
+        depth_factor = depth_map.get(depth_level, 1.0) if (apply_depth and (facet_judgments or depth_levels)) else 1.0
 
         if r.get("importance") == "MUST_HAVE":
             if st == "UNKNOWN":
@@ -262,37 +270,50 @@ def score_v2(
                 must_not_strong.append(rid)
 
         if st == "UNKNOWN":
+            items.append((r.get("category", "GENERAL"), w, None))
             continue
 
         state_factor = STATE_VALUE.get(st, 0.0)
         item_val = w * state_factor * depth_factor
+        items.append((r.get("category", "GENERAL"), w, state_factor * depth_factor))
 
         num += item_val
         den += w
-        cat = r.get("category", "GENERAL")
-        cat_num[cat] = cat_num.get(cat, 0.0) + item_val
-        cat_den[cat] = cat_den.get(cat, 0.0) + w
 
-    cat_scores = {c: round((100.0 * cat_num[c] / cat_den[c]), 1) if cat_den[c] else 0.0 for c in cat_den}
-
-    # Two-layer normalization using category_weights if provided
     raw_cat_weights = requirement_set.get("category_weights") or {}
-    active_weights = {cat: float(w) for cat, w in raw_cat_weights.items() if cat in cat_den and cat_den[cat] > 0}
 
-    if active_weights:
-        total_active_weight = sum(active_weights.values())
-        raw_val = sum(cat_scores[c] * (w / total_active_weight) for c, w in active_weights.items())
-        raw = round(raw_val, 1)
-    else:
-        raw = round(100.0 * num / den, 1) if den else 0.0
+    def _aggregate(unknown_value: float | None) -> tuple[float, dict[str, float]]:
+        """Weighted score; UNKNOWN is excluded (None), or counted as worst (0.0) / best (1.0) case."""
+        c_num: dict[str, float] = {}
+        c_den: dict[str, float] = {}
+        for cat_name, weight, value in items:
+            if value is None:
+                if unknown_value is None:
+                    continue
+                value = unknown_value
+            c_num[cat_name] = c_num.get(cat_name, 0.0) + weight * value
+            c_den[cat_name] = c_den.get(cat_name, 0.0) + weight
+        scores = {c: (100.0 * c_num[c] / c_den[c]) if c_den[c] else 0.0 for c in c_den}
+        active = {cat: float(w) for cat, w in raw_cat_weights.items() if cat in c_den and c_den[cat] > 0}
+        if active:
+            total_active = sum(active.values())
+            return round(sum(scores[c] * (w / total_active) for c, w in active.items()), 1), scores
+        total_den = sum(c_den.values())
+        return (round(100.0 * sum(c_num.values()) / total_den, 1) if total_den else 0.0), scores
+
+    raw, cat_scores = _aggregate(None)
+    raw_lo, _ = _aggregate(0.0)
+    raw_hi, _ = _aggregate(1.0)
 
     cats = {c: round(score_val, 1) for c, score_val in cat_scores.items()}
 
-    # Check for Agent Disagreement
+    # Agent disagreement is a review signal. v2.1 forced every disagreement into Band R, which pushed
+    # 17 of 19 real candidates (including a 92.1 scorer) to MANUAL_CHECK; it is now opt-in.
     has_agent_disagreement = "AGENT_DISAGREEMENT" in score_flags
+    disagreement_forces_r = has_agent_disagreement and settings.AGENT_DISAGREEMENT_FORCES_BAND_R
 
     # Determine Band
-    if must_unknown or has_agent_disagreement:
+    if must_unknown or disagreement_forces_r:
         band = "R"
     elif not must_not_strong:
         band = "A"
@@ -307,9 +328,9 @@ def score_v2(
     capped = final < raw
 
     # Recommendations
-    if band == "R" or has_agent_disagreement:
+    if band == "R":
         rec = "MANUAL_CHECK"
-    elif band == "A" and final >= 70.0:
+    elif band == "A" and final >= SHORTLIST_CUTOFF:
         rec = "SHORTLIST"
     elif band in ("A", "B"):
         rec = "REVIEW"
@@ -326,6 +347,18 @@ def score_v2(
         score_flags.append("LOW_COVERAGE")
         if rec == "SHORTLIST":
             rec = "MANUAL_CHECK"
+
+    if has_agent_disagreement and not disagreement_forces_r:
+        score_flags.append("AGENT_DISAGREEMENT_REVIEW")
+        if rec == "SHORTLIST":
+            rec = "REVIEW"  # a human confirms before this candidate is shortlisted
+
+    # Score interval: UNKNOWN requirements as worst / best case, under the same band cap.
+    score_lo = min(raw_lo, cap)
+    score_hi = min(raw_hi, cap)
+    straddles = score_lo < SHORTLIST_CUTOFF <= score_hi
+    if straddles:
+        score_flags.append("SCORE_INTERVAL_STRADDLES_SHORTLIST")
 
     # Combine flags
     combined_flags = sorted(list(set(score_flags + anti_stuffing_flags)))
@@ -344,10 +377,13 @@ def score_v2(
         must_have_not_strong=must_not_strong,
         coverage=coverage,
         flags=combined_flags,
-        scoring_version="v2.1",
+        scoring_version="v2.2",
         depth_breakdown=depth_breakdown,
         effective_states=effective_states,
         anti_stuffing_flags=anti_stuffing_flags,
+        score_lo=score_lo,
+        score_hi=score_hi,
+        interval_straddles_boundary=straddles,
     )
 
 
@@ -357,8 +393,10 @@ def rank_v2(items: list[dict[str, Any]], run_id: str = "eval") -> list[dict[str,
     Sorting key:
     1. Band order (A: 0, B: 1, C: 2, R: 3)
     2. Final score descending (-final_score)
-    3. Strong count descending (-strong_count)
-    4. Deterministic SHA-256 tie-breaker key
+    3. Raw (uncapped) score descending: band caps (74 / 49) flatten many candidates to the same final score,
+       and ordering them by hash instead of by how much evidence they have throws that information away
+    4. Strong count descending (-strong_count)
+    5. Deterministic SHA-256 tie-breaker key
     """
 
     def _extract_band(x: dict[str, Any]) -> str:
@@ -377,11 +415,19 @@ def rank_v2(items: list[dict[str, Any]], run_id: str = "eval") -> list[dict[str,
                 return float(s)
         return float(x.get("final_score", 0.0))
 
+    def _extract_raw(x: dict[str, Any]) -> float:
+        res = x.get("result")
+        raw = getattr(res, "raw_score", None) if res is not None else None
+        if raw is None and isinstance(res, dict):
+            raw = res.get("raw_score")
+        return float(raw if raw is not None else _extract_score(x))
+
     return sorted(
         items,
         key=lambda x: (
             BAND_ORDER.get(_extract_band(x), 99),
             -_extract_score(x),
+            -_extract_raw(x),
             -x.get("strong_count", 0),
             tie_break_key(str(x.get("candidate_id") or x.get("cv_id") or ""), run_id),
         ),

@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
+import random
 import re
 import time
 import uuid
@@ -14,6 +15,7 @@ from typing import Any
 import httpx
 
 from src.domain.pii import EMAIL_REGEX, PHONE_REGEX, sanitize_contact_pii
+from src.domain.text_hygiene import neutralize_control_chars
 from src.infrastructure.config import settings
 from src.infrastructure.database import get_connection
 from src.infrastructure.logging import logger
@@ -75,6 +77,25 @@ def parse_llm_json(content_str: str) -> dict[str, Any] | list[Any] | None:
     return None
 
 
+_semaphores: dict[int, asyncio.Semaphore] = {}
+
+
+def llm_semaphore() -> asyncio.Semaphore:
+    """Global in-flight cap for LLM requests, one semaphore per running event loop."""
+    loop_id = id(asyncio.get_running_loop())
+    sem = _semaphores.get(loop_id)
+    if sem is None:
+        if len(_semaphores) > 8:
+            _semaphores.clear()
+        sem = _semaphores[loop_id] = asyncio.Semaphore(max(1, settings.LLM_MAX_CONCURRENCY))
+    return sem
+
+
+def jittered(delay: float) -> float:
+    """Full-jitter-ish backoff: between 50% and 150% of the nominal delay."""
+    return delay * (0.5 + random.random())
+
+
 class ModelGateway:
     def __init__(self):
         self.base_url = settings.LLM_GATEWAY_URL
@@ -82,7 +103,11 @@ class ModelGateway:
 
     def get_client(self) -> httpx.AsyncClient:
         """Returns AsyncClient session without stale keepalive pooling."""
-        limits = httpx.Limits(max_keepalive_connections=0, max_connections=10, keepalive_expiry=5.0)
+        limits = httpx.Limits(
+            max_keepalive_connections=0,
+            max_connections=max(10, settings.LLM_MAX_CONCURRENCY + 2),
+            keepalive_expiry=5.0,
+        )
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=180.0, limits=limits)
         return self._client
@@ -117,7 +142,7 @@ class ModelGateway:
         # Pre-flight safety inspection & auto-sanitization
         for m in messages:
             if "content" in m and isinstance(m["content"], str):
-                m["content"] = sanitize_contact_pii(m["content"])
+                m["content"] = neutralize_control_chars(sanitize_contact_pii(m["content"]))
         combined_prompt = " ".join([m.get("content", "") for m in messages])
         self.verify_redacted_text(combined_prompt)
 
@@ -160,7 +185,8 @@ class ModelGateway:
         for attempt in range(max_retries):
             try:
                 client = self.get_client()
-                res = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
+                async with llm_semaphore():
+                    res = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
                 latency_ms = int((time.time() - t0) * 1000)
 
                 # Retry on 429 rate limit or 5xx server error
@@ -168,7 +194,7 @@ class ModelGateway:
                     logger.warning(
                         f"9Router returned HTTP {res.status_code}, retrying in {backoff_sec}s (attempt {attempt + 1}/{max_retries})..."
                     )
-                    await asyncio.sleep(backoff_sec)
+                    await asyncio.sleep(jittered(backoff_sec))
                     backoff_sec *= 2.0
                     continue
 
@@ -230,7 +256,7 @@ class ModelGateway:
                 await self.close()
                 if attempt < max_retries - 1:
                     logger.warning(f"9Router network error ({e}), retrying in {backoff_sec}s...")
-                    await asyncio.sleep(backoff_sec)
+                    await asyncio.sleep(jittered(backoff_sec))
                     backoff_sec *= 2.0
                     continue
                 logger.warning(f"9Router connection failed after {max_retries} attempts: {e}")

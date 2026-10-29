@@ -14,6 +14,7 @@ Implements Section C4, C5, C6, C7, and C10 of Blueprint v2.1:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -22,12 +23,12 @@ from typing import Any
 from src.agents.critic import (
     CriticFacetReview,
     CriticInput,
+    decide_critic_routing,
     evaluate_escalation_triggers,
     resolve_disagreements,
     run_critic_agent,
 )
 from src.agents.matcher import (
-    FacetEvaluationInput,
     FacetEvaluationResult,
     run_matcher_agent,
 )
@@ -38,6 +39,8 @@ from src.domain.matching import (
     aggregate_requirement_facets,
     partition_facets_by_ontology_shortcut,
 )
+from src.domain.matching.domain_inference import apply_domain_inference
+from src.domain.matching.retriever import expand_facet_terms, rank_atoms_in_memory
 from src.domain.ontology.graph import OntologyGraph
 from src.domain.ontology.loader import get_ontology_graph
 from src.domain.requirements.compiler import (
@@ -48,6 +51,7 @@ from src.domain.requirements.compiler import (
     save_facet_judgment_to_db,
     save_requirement_ir_to_db,
 )
+from src.domain.requirements.facet_narrowing import ROLE_KINDS, apply_facet_narrowing, facet_signature, own_facet
 from src.domain.requirements.schemas import (
     RequirementFacet,
     RequirementSetIR,
@@ -60,6 +64,7 @@ from src.domain.temporal.weighted_union import (
     calculate_weighted_union,
     compute_entry_weight,
 )
+from src.infrastructure.config import settings
 from src.infrastructure.database import get_connection
 from src.infrastructure.logging import logger
 
@@ -76,6 +81,25 @@ class CandidateInput:
     atom_tags: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     flags: list[str] = field(default_factory=list)
+
+
+@dataclass
+class _PreparedCandidate:
+    """Phase-1 outcome for one candidate: judged, aggregated and provisionally scored."""
+
+    c_id: str
+    p_id: str | None
+    atoms: list[Any]
+    raw_title: str | None
+    metadata: dict[str, Any]
+    candidate_flags: list[str]
+    judgments: list[FacetEvaluationResult]
+    requirement_results: dict[str, AggregatedRequirementResult]
+    all_domain_durations: dict[str, Any]
+    req_set_dict: dict[str, Any]
+    prelim_score: ScoreResultV2
+    triggers: list[str]
+    llm_atoms: list[Any]
 
 
 @dataclass
@@ -243,33 +267,73 @@ class ScreeningPipeline:
         else:
             raise ValueError("Either job_description or requirement_set must be provided to ScreeningPipeline.")
 
-        # Ensure all requirements have decomposed facets
+        # Ensure all requirements have facets: role statements get the role template, other kinds their own facet
         for req in req_set_ir.requirements:
             if not req.facets and req.description:
-                req.facets = decompose_role_to_facets(
-                    role_or_title=req.description,
-                    ontology=self.ontology,
-                )
+                if (req.kind or "").upper() in ROLE_KINDS:
+                    req.facets = decompose_role_to_facets(
+                        role_or_title=req.description,
+                        ontology=self.ontology,
+                    )
+                else:
+                    req.facets = [own_facet(req)]
+
+        if settings.FACET_NARROWING_ENABLED:
+            narrowed = apply_facet_narrowing(req_set_ir)
+            if narrowed:
+                logger.info(f"ScreeningPipeline S0: narrowed facets for {narrowed} requirement(s)")
 
         logger.info(
             f"ScreeningPipeline S0: Processing {len(req_set_ir.requirements)} requirements for "
             f"{len(candidates)} candidates (run_id={active_run_id})"
         )
 
-        candidate_results: list[CandidateScreeningResult] = []
+        # ------------------------------------------------------------------
+        # Phase 1: match + aggregate + preliminary score (candidates run concurrently)
+        # ------------------------------------------------------------------
+        gate = asyncio.Semaphore(max(1, settings.SCREENING_CANDIDATE_CONCURRENCY))
+
+        async def _prepare(c: CandidateInput | dict[str, Any]) -> _PreparedCandidate:
+            async with gate:
+                return await self._prepare_candidate(cand=c, req_set_ir=req_set_ir, tenant_id=active_tenant_id)
+
+        prepared = list(await asyncio.gather(*(_prepare(c) for c in candidates)))
 
         # ------------------------------------------------------------------
-        # Evaluate each candidate independently
+        # Critic routing: anomalies, provisional top-K and a reproducible random audit sample
         # ------------------------------------------------------------------
-        for cand in candidates:
-            c_res = await self._evaluate_single_candidate(
-                cand=cand,
-                req_set_ir=req_set_ir,
-                run_id=active_run_id,
-                tenant_id=active_tenant_id,
-                critic_model=critic_model,
+        provisional = rank_v2(
+            [{"candidate_id": p.c_id, "result": p.prelim_score, "strong_count": 0} for p in prepared],
+            run_id=str(active_run_id),
+        )
+        top_k_ids = {str(item["candidate_id"]) for item in provisional[: max(0, settings.CRITIC_TOP_K)]}
+        routing_by_id = {
+            p.c_id: decide_critic_routing(
+                triggers=p.triggers,
+                in_top_k=p.c_id in top_k_ids,
+                run_id=str(active_run_id),
+                candidate_id=p.c_id,
+                audit_rate=settings.CRITIC_RANDOM_AUDIT_RATE,
             )
-            candidate_results.append(c_res)
+            for p in prepared
+        }
+
+        # ------------------------------------------------------------------
+        # Phase 2: Critic audit (only routed candidates) + final score
+        # ------------------------------------------------------------------
+        async def _finalize(p: _PreparedCandidate) -> CandidateScreeningResult:
+            async with gate:
+                return await self._finalize_candidate(
+                    prep=p,
+                    req_set_ir=req_set_ir,
+                    routing=routing_by_id[p.c_id],
+                    tenant_id=active_tenant_id,
+                    critic_model=critic_model,
+                )
+
+        candidate_results: list[CandidateScreeningResult] = list(
+            await asyncio.gather(*(_finalize(p) for p in prepared))
+        )
 
         # ------------------------------------------------------------------
         # Step S10: Rank Candidates Deterministically
@@ -320,15 +384,122 @@ class ScreeningPipeline:
             candidates=ranked_candidates,
         )
 
-    async def _evaluate_single_candidate(
+    async def _judge_distinct_facets(
+        self,
+        req_set_ir: RequirementSetIR,
+        atoms: list[Any],
+        atom_tags: dict[str, Any],
+        raw_title: str | None,
+        tenant_id: uuid.UUID,
+    ) -> tuple[list[FacetEvaluationResult], list[str]]:
+        """Judges every distinct facet of the requirement set exactly once (v2.2).
+
+        Requirements frequently share identical facets (role templates); judging them once per
+        requirement multiplied Matcher calls and let one weak facet depress every criterion.
+        Returns one judgment per distinct facet signature, in first-seen order.
+        """
+        distinct: dict[tuple[str, str, tuple[str, ...]], RequirementFacet] = {}
+        for req in req_set_ir.requirements:
+            for f in req.facets or []:
+                distinct.setdefault(facet_signature(f), f)
+
+        # A facet_key must be unique inside one Matcher call: split signatures sharing a key into rounds.
+        rounds: list[list[tuple[tuple[str, str, tuple[str, ...]], RequirementFacet]]] = []
+        seen_per_key: dict[str, int] = {}
+        for sig, facet in distinct.items():
+            idx = seen_per_key.get(facet.facet_key, 0)
+            seen_per_key[facet.facet_key] = idx + 1
+            while len(rounds) <= idx:
+                rounds.append([])
+            rounds[idx].append((sig, facet))
+
+        judgments: list[FacetEvaluationResult] = []
+        matcher_flags: list[str] = []
+        for round_items in rounds:
+            facets_in_round = [f for _, f in round_items]
+            shortcut_dict, remaining = partition_facets_by_ontology_shortcut(
+                facets=list(facets_in_round),
+                candidate_atoms=atoms,
+                ontology=self.ontology,
+                atom_tags=atom_tags,
+            )
+            judgments.extend(shortcut_dict.values())
+            if remaining:
+                matcher_atoms = self._atoms_for_matcher(remaining, atoms)
+                matcher_output = await run_matcher_agent(
+                    facets=list(remaining),
+                    candidate_atoms=matcher_atoms,
+                    client=self.client,
+                    tenant_id=tenant_id,
+                    raw_title=raw_title,
+                    all_candidate_atoms=atoms,
+                )
+                judgments.extend(matcher_output.evaluations)
+                matcher_flags.extend(matcher_output.flags)
+        return judgments, matcher_flags
+
+    @staticmethod
+    def _llm_visible_atoms(atoms: list[Any], req_set_ir: RequirementSetIR | None = None) -> list[Any]:
+        """Atoms the Matcher/Critic may see: kinds that are prestige/age proxies (education) stay out.
+
+        If the recruiter explicitly asked for an education requirement, education atoms are legitimate evidence.
+        """
+        excluded = set(settings.MATCHER_EXCLUDED_ATOM_KINDS)
+        if req_set_ir is not None and any((r.kind or "").upper() == "EDUCATION" for r in req_set_ir.requirements):
+            excluded.discard("education")
+        if not excluded:
+            return atoms
+        kept = [
+            a
+            for a in atoms
+            if str(getattr(a, "kind", None) or (a.get("kind") if isinstance(a, dict) else "")) not in excluded
+        ]
+        return kept or atoms
+
+    @staticmethod
+    def _verifiable_atoms(atoms: list[Any], candidate_flags: list[str]) -> list[Any]:
+        """Evidence-or-abstain: atoms whose span cannot be located in the CV are not evidence.
+
+        If that would leave no evidence at all the atoms are kept and the candidate is flagged, so a
+        parser problem never silently wipes out a CV.
+        """
+        if not settings.REQUIRE_VERIFIED_SPANS or not atoms:
+            return atoms
+
+        def _verified(a: Any) -> bool:
+            if hasattr(a, "span_verified"):
+                return bool(a.span_verified)
+            return int(a.get("char_end") or 0) > int(a.get("char_start") or 0)
+
+        verified = [a for a in atoms if _verified(a)]
+        dropped = len(atoms) - len(verified)
+        if dropped == 0:
+            return atoms
+        if not verified:
+            candidate_flags.append("SPAN_VERIFICATION_UNAVAILABLE")
+            return atoms
+        candidate_flags.append(f"UNVERIFIED_SPAN_ATOMS:{dropped}")
+        return verified
+
+    def _atoms_for_matcher(self, facets: Sequence[Any], atoms: list[Any]) -> list[Any]:
+        """Optional retrieval-before-judging: union of the top-K atoms per facet (0 = send all atoms)."""
+        k = int(settings.MATCHER_RETRIEVAL_TOP_K)
+        if k <= 0 or not atoms:
+            return atoms
+        picked: dict[str, Any] = {}
+        for facet in facets:
+            query_text, terms = expand_facet_terms(facet=facet, ontology=self.ontology)
+            for atom in rank_atoms_in_memory(atoms, query_text, terms, None, k=k):
+                picked.setdefault(atom.atom_key, atom)
+        return list(picked.values()) or atoms
+
+    async def _prepare_candidate(
         self,
         cand: CandidateInput | dict[str, Any],
         req_set_ir: RequirementSetIR,
-        run_id: uuid.UUID,
         tenant_id: uuid.UUID,
-        critic_model: str,
-    ) -> CandidateScreeningResult:
-        """Evaluates an individual candidate across all requirements."""
+    ) -> _PreparedCandidate:
+        """Phase 1: match facets, compute durations, aggregate requirements and preliminary score."""
         if isinstance(cand, dict):
             c_id = str(cand.get("candidate_id") or uuid.uuid4())
             p_id = str(cand.get("profile_id")) if cand.get("profile_id") else None
@@ -354,100 +525,34 @@ class ScreeningPipeline:
         if metadata.get("has_hidden_text"):
             candidate_flags.append("HIDDEN_TEXT")
 
-        all_facet_judgments: list[FacetEvaluationResult] = []
         requirement_results: dict[str, AggregatedRequirementResult] = {}
         all_domain_durations: dict[str, Any] = {}
-
         temporal_entries = _build_temporal_entries(experiences)
-        facet_to_req_id: dict[str, str] = {}
 
-        # ------------------------------------------------------------------
-        # Process Each Requirement
-        # ------------------------------------------------------------------
+        # Steps S4 + S6: every distinct facet is judged once, then shared by the requirements using it.
+        atoms = self._verifiable_atoms(atoms, candidate_flags)  # everything downstream sees only verifiable evidence
+        llm_atoms = self._llm_visible_atoms(atoms, req_set_ir)
+        all_facet_judgments, matcher_flags = await self._judge_distinct_facets(
+            req_set_ir, llm_atoms, atom_tags, raw_title, tenant_id
+        )
+        candidate_flags.extend(matcher_flags)
+        if settings.DOMAIN_INFERENCE_ENABLED:
+            hypotheses = {f.facet_key: f.hypothesis for r in req_set_ir.requirements for f in r.facets or []}
+            all_facet_judgments, inference_flags = apply_domain_inference(all_facet_judgments, hypotheses, atoms)
+            candidate_flags.extend(inference_flags)
+        judgment_by_key: dict[str, FacetEvaluationResult] = {}
+        for j in all_facet_judgments:
+            judgment_by_key.setdefault(j.facet_key, j)
+
         for req in req_set_ir.requirements:
-            req_facets = req.facets or []
-            for f in req_facets:
-                facet_to_req_id[f.facet_key] = req.requirement_id
-
-            # Step S4: Ontology Shortcut
-            facets_for_shortcut: list[RequirementFacet | dict[str, Any]] = list(req_facets)
-            shortcut_dict, remaining_facets = partition_facets_by_ontology_shortcut(
-                facets=facets_for_shortcut,
-                candidate_atoms=atoms,
-                ontology=self.ontology,
-                atom_tags=atom_tags,
-            )
-            shortcut_judgments = list(shortcut_dict.values())
-
-            # Step S6: Matcher Agent for remaining facets
-            matcher_judgments: list[FacetEvaluationResult] = []
-            if remaining_facets:
-                facets_for_matcher: list[RequirementFacet | FacetEvaluationInput | dict[str, Any]] = list(
-                    remaining_facets
-                )
-                # Retrieve evidence per facet
-                matcher_output = await run_matcher_agent(
-                    facets=facets_for_matcher,
-                    candidate_atoms=atoms,
-                    client=self.client,
-                    tenant_id=tenant_id,
-                    raw_title=raw_title,
-                    all_candidate_atoms=atoms,
-                )
-                matcher_judgments = matcher_output.evaluations
-
-            combined_req_judgments = list(shortcut_judgments) + list(matcher_judgments)
-            all_facet_judgments.extend(combined_req_judgments)
+            combined_req_judgments = [
+                judgment_by_key[f.facet_key] for f in req.facets or [] if f.facet_key in judgment_by_key
+            ]
 
             # Step S2: Temporal Engine (Weighted Calendar Union)
-            domain_duration_dict: dict[str, Any] | None = None
-            if req.duration_policy is not None or req.target_domains:
-                domain_name = req.target_domains[0] if req.target_domains else "general"
-                min_m = req.duration_policy.min_months if req.duration_policy else 0.0
-
-                dur_policy = DurationPolicy(
-                    alloc_weights=(
-                        req.duration_policy.alloc_weights
-                        if req.duration_policy and req.duration_policy.alloc_weights
-                        else None
-                    )
-                    or {"PRIMARY": 1.0, "SECONDARY": 0.5, "INCIDENTAL": 0.0},
-                    emp_weights=(
-                        req.duration_policy.emp_weights
-                        if req.duration_policy and req.duration_policy.emp_weights
-                        else None
-                    )
-                    or {
-                        "full-time": 1.0,
-                        "full_time": 1.0,
-                        "kontrak": 1.0,
-                        "part-time": 0.5,
-                        "magang": 0.5,
-                        "internship": 0.5,
-                        "freelance": 0.75,
-                        "unknown": 1.0,
-                    },
-                )
-
-                union_res = calculate_weighted_union(
-                    entries=temporal_entries,
-                    domain=domain_name,
-                    min_months=min_m,
-                    policy=dur_policy,
-                )
-
-                domain_duration_dict = {
-                    "domain": domain_name,
-                    "months_lo": union_res.months_lo,
-                    "months_hi": union_res.months_hi,
-                    "month_ledger": union_res.month_ledger,
-                    "state": union_res.state,
-                    "flags": union_res.flags,
-                    "min_months": min_m,
-                }
+            domain_duration_dict = self._compute_domain_duration(req, temporal_entries, candidate_flags)
+            if domain_duration_dict is not None:
                 all_domain_durations[req.requirement_id] = domain_duration_dict
-                if union_res.flags:
-                    candidate_flags.extend(union_res.flags)
 
             # Step S7: Aggregate Requirement Facets and Temporal Duration
             combined_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(combined_req_judgments)
@@ -461,9 +566,6 @@ class ScreeningPipeline:
             if agg_result.flags:
                 candidate_flags.extend(agg_result.flags)
 
-        # ------------------------------------------------------------------
-        # Step S8: Escalation Triggers and Critic Agent
-        # ------------------------------------------------------------------
         prelim_states = {
             req_id: r.state.value if hasattr(r.state, "value") else str(r.state)
             for req_id, r in requirement_results.items()
@@ -477,33 +579,113 @@ class ScreeningPipeline:
             facet_judgments=all_judgments_any,
             atoms=atoms,
             flags=candidate_flags,
+            apply_depth=settings.SCORER_DEPTH_FACTORS_ENABLED,
         )
-
-        escalation_triggers = evaluate_escalation_triggers(
+        # Flags raised anywhere upstream (sanitizer, matcher INJECTION_SUSPECT, date engine) feed E4/E5/E6.
+        trigger_metadata = {**metadata, "flags": sorted(set(metadata.get("flags", [])) | set(candidate_flags))}
+        triggers = evaluate_escalation_triggers(
             candidate_id=c_id,
             requirement_scores=prelim_score,
             judgments=all_judgments_any,
             atoms=atoms,
-            candidate_metadata=metadata,
+            candidate_metadata=trigger_metadata,
+        )
+        return _PreparedCandidate(
+            c_id=c_id,
+            p_id=p_id,
+            atoms=atoms,
+            raw_title=raw_title,
+            metadata=metadata,
+            candidate_flags=candidate_flags,
+            judgments=all_facet_judgments,
+            requirement_results=requirement_results,
+            all_domain_durations=all_domain_durations,
+            req_set_dict=req_set_dict,
+            prelim_score=prelim_score,
+            triggers=triggers,
+            llm_atoms=llm_atoms,
         )
 
-        critic_reviews: list[CriticFacetReview] = []
-        final_facet_judgments = list(all_facet_judgments)
+    @staticmethod
+    def _compute_domain_duration(
+        req: Any,
+        temporal_entries: list[TemporalEntry],
+        candidate_flags: list[str],
+    ) -> dict[str, Any] | None:
+        if req.duration_policy is None and not req.target_domains:
+            return None
+        domain_name = req.target_domains[0] if req.target_domains else "general"
+        min_m = req.duration_policy.min_months if req.duration_policy else 0.0
 
-        if escalation_triggers:
-            logger.info(
-                f"Escalation triggers active for candidate {c_id}: {escalation_triggers}. Invoking Critic Agent."
+        dur_policy = DurationPolicy(
+            alloc_weights=(
+                req.duration_policy.alloc_weights if req.duration_policy and req.duration_policy.alloc_weights else None
             )
+            or {"PRIMARY": 1.0, "SECONDARY": 0.5, "INCIDENTAL": 0.0},
+            emp_weights=(
+                req.duration_policy.emp_weights if req.duration_policy and req.duration_policy.emp_weights else None
+            )
+            or {
+                "full-time": 1.0,
+                "full_time": 1.0,
+                "kontrak": 1.0,
+                "part-time": 0.5,
+                "magang": 0.5,
+                "internship": 0.5,
+                "freelance": 0.75,
+                "unknown": 1.0,
+            },
+        )
+        union_res = calculate_weighted_union(
+            entries=temporal_entries,
+            domain=domain_name,
+            min_months=min_m,
+            policy=dur_policy,
+        )
+        if union_res.flags:
+            candidate_flags.extend(union_res.flags)
+        return {
+            "domain": domain_name,
+            "months_lo": union_res.months_lo,
+            "months_hi": union_res.months_hi,
+            "month_ledger": union_res.month_ledger,
+            "state": union_res.state,
+            "flags": union_res.flags,
+            "min_months": min_m,
+        }
+
+    async def _finalize_candidate(
+        self,
+        prep: _PreparedCandidate,
+        req_set_ir: RequirementSetIR,
+        routing: list[str],
+        tenant_id: uuid.UUID,
+        critic_model: str,
+    ) -> CandidateScreeningResult:
+        """Phase 2: Critic audit (only when routed), re-aggregation, final score and grounding atoms."""
+        c_id = prep.c_id
+        atoms = prep.atoms
+        candidate_flags = list(prep.candidate_flags)
+        requirement_results = dict(prep.requirement_results)
+        all_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(prep.judgments)
+
+        # Step S8: Critic Agent (cross-family audit), routed by anomaly / top-K / random audit
+        escalation_triggers = sorted(set(prep.triggers) | set(routing))
+        critic_reviews: list[CriticFacetReview] = []
+        final_facet_judgments = list(prep.judgments)
+
+        if routing:
+            logger.info(f"Critic audit for candidate {c_id}: routing={routing} triggers={prep.triggers}")
             critic_input = CriticInput(
                 candidate_id=c_id,
                 judgments=all_judgments_any,
-                atoms=atoms,
+                atoms=prep.llm_atoms,
                 escalation_triggers=escalation_triggers,
                 requirement_scores={
-                    "final_score": prelim_score.final_score,
-                    "band": prelim_score.band,
+                    "final_score": prep.prelim_score.final_score,
+                    "band": prep.prelim_score.band,
                 },
-                raw_title=raw_title,
+                raw_title=prep.raw_title,
             )
             critic_output = await run_critic_agent(
                 critic_input=critic_input,
@@ -513,58 +695,47 @@ class ScreeningPipeline:
             )
             critic_reviews = critic_output.facet_reviews
 
-            # Resolve disputes and update judgments if downgraded
-            all_judgments_for_dispute: list[FacetEvaluationResult | dict[str, Any]] = list(all_facet_judgments)
             resolved_judgments, critic_flags, _ = resolve_disagreements(
-                judgments=all_judgments_for_dispute,
+                judgments=list(prep.judgments),
                 critic_output=critic_output,
             )
             final_facet_judgments = resolved_judgments
             candidate_flags.extend(critic_flags)
 
-            # Re-aggregate requirements that experienced judgment changes
-            re_judgments_by_req: dict[str, list[FacetEvaluationResult]] = {}
-            for j in final_facet_judgments:
-                rid = facet_to_req_id.get(j.facet_key)
-                if rid:
-                    re_judgments_by_req.setdefault(rid, []).append(j)
-
+            # Re-aggregate every requirement that uses a facet (a shared facet feeds several requirements)
+            by_key = {j.facet_key: j for j in final_facet_judgments}
             for req in req_set_ir.requirements:
-                if req.requirement_id in re_judgments_by_req:
-                    re_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(
-                        re_judgments_by_req[req.requirement_id]
-                    )
-                    re_agg = aggregate_requirement_facets(
-                        requirement=req,
-                        judgments=re_judgments_any,
-                        candidate_atoms=atoms,
-                        domain_duration=all_domain_durations.get(req.requirement_id),
-                    )
-                    requirement_results[req.requirement_id] = re_agg
-                    if re_agg.flags:
-                        candidate_flags.extend(re_agg.flags)
+                req_judgments = [by_key[f.facet_key] for f in req.facets or [] if f.facet_key in by_key]
+                if not req_judgments:
+                    continue
+                re_agg = aggregate_requirement_facets(
+                    requirement=req,
+                    judgments=list(req_judgments),
+                    candidate_atoms=atoms,
+                    domain_duration=prep.all_domain_durations.get(req.requirement_id),
+                )
+                requirement_results[req.requirement_id] = re_agg
+                if re_agg.flags:
+                    candidate_flags.extend(re_agg.flags)
 
-        # ------------------------------------------------------------------
         # Step S9: Final Composite Score via Scorer v2
-        # ------------------------------------------------------------------
         final_states = {
             req_id: r.state.value if hasattr(r.state, "value") else str(r.state)
             for req_id, r in requirement_results.items()
         }
-        all_candidate_flags = sorted(list(set(candidate_flags)))
+        all_candidate_flags = sorted(set(candidate_flags))
         final_judgments_any: list[FacetEvaluationResult | dict[str, Any]] = list(final_facet_judgments)
 
         final_scoring = score_v2(
             states=final_states,
-            requirement_set=req_set_dict,
+            requirement_set=prep.req_set_dict,
             facet_judgments=final_judgments_any,
             atoms=atoms,
             flags=all_candidate_flags,
+            apply_depth=settings.SCORER_DEPTH_FACTORS_ENABLED,
         )
 
-        # ------------------------------------------------------------------
         # Transparent Grounding Atoms Resolution
-        # ------------------------------------------------------------------
         used_atom_keys: set[str] = set()
         for fj in final_facet_judgments:
             supp = getattr(fj, "support_atoms", None) or (fj.get("support_atoms", []) if isinstance(fj, dict) else [])
@@ -597,7 +768,7 @@ class ScreeningPipeline:
 
         return CandidateScreeningResult(
             candidate_id=c_id,
-            profile_id=p_id,
+            profile_id=prep.p_id,
             band=final_scoring.band,
             final_score=final_scoring.final_score,
             raw_score=final_scoring.raw_score,
@@ -608,7 +779,7 @@ class ScreeningPipeline:
             critic_reviews=critic_reviews,
             grounding_atoms=grounding_atoms,
             escalation_triggers=escalation_triggers,
-            domain_durations=all_domain_durations,
+            domain_durations=prep.all_domain_durations,
             flags=final_scoring.flags,
             category_scores=final_scoring.category_scores,
             depth_breakdown=final_scoring.depth_breakdown,

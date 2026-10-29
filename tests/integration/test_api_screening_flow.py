@@ -309,3 +309,63 @@ async def test_full_agentic_v21_pipeline_ingestion_screening_and_api(
     assert "domain_durations" in detail_data
     assert "critic_reviews" in detail_data
     assert "grounding_atoms" in detail_data
+
+    # 6. Recruiter assist (v2.2): probes, interview answers (re-score), Copilot tools + audit trail
+    base = f"/api/v1/jobs/{job_id}/screenings/{run_id}"
+    probes_res = await client.get(f"{base}/candidates/{cand_id_str}/probes?budget=3", headers=headers)
+    assert probes_res.status_code == 200
+    probes_data = probes_res.json()
+    assert probes_data["budget"] == 3 and len(probes_data["probes"]) <= 3
+    assert all(p["status"] == "PENDING_APPROVAL" for p in probes_data["probes"])
+
+    facet_key = first_cand["facet_judgments"][0]["facet_key"]
+    ans_res = await client.post(
+        f"{base}/candidates/{cand_id_str}/interview-answers",
+        json={
+            "answers": [
+                {
+                    "facet_key": facet_key,
+                    "rating": "STRONG",
+                    "answer_text": "Saya merancang dan memimpin migrasi skema.",
+                }
+            ]
+        },
+        headers=headers,
+    )
+    assert ans_res.status_code == 200
+    ans_data = ans_res.json()
+    assert ans_data["adjusted_facets"] == [facet_key]
+    assert ans_data["interview_atoms"][0]["kind"] == "interview_answer"
+    assert "INTERVIEW_ADJUSTED" in ans_data["after"]["flags"]
+    bad_ans = await client.post(
+        f"{base}/candidates/{cand_id_str}/interview-answers",
+        json={"answers": [{"facet_key": "NOPE", "rating": "STRONG"}]},
+        headers=headers,
+    )
+    assert bad_ans.status_code == 422
+
+    cop_res = await client.post(
+        f"{base}/copilot", json={"tool": "explain_score", "args": {"candidate_id": cand_id_str}}, headers=headers
+    )
+    assert cop_res.status_code == 200
+    explained = cop_res.json()["result"]
+    assert explained["candidate"] == cand_id_str.replace("-", "")[:8]
+    assert "file_name" not in str(explained) and "cv_budi" not in str(explained)
+
+    refused = await client.post(
+        f"{base}/copilot",
+        json={
+            "tool": "explain_score",
+            "args": {"candidate_id": cand_id_str},
+            "draft_answer": "Kandidat ini beragama Islam dan sudah menikah.",
+        },
+        headers=headers,
+    )
+    assert refused.status_code == 422 and "atribut terlindungi" in refused.json()["detail"]
+
+    async with get_connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            "SELECT allowed, count(*) AS n FROM copilot_audit_log WHERE run_id = %s GROUP BY allowed", (run_id,)
+        )
+        audit = {r["allowed"]: r["n"] for r in await cur.fetchall()}
+    assert audit == {True: 1, False: 1}

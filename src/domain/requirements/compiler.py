@@ -527,6 +527,13 @@ async def save_requirement_ir_to_db(
                 ),
             )
 
+        # The IR is the source of truth: drop facets that are no longer part of it (e.g. an old role template
+        # replaced by requirement-specific facets), otherwise they would be reloaded on the next run.
+        await cur.execute(
+            "DELETE FROM requirement_facets WHERE requirement_uuid = %s AND NOT (facet_key = ANY(%s))",
+            (r_id, [f.facet_key for f in req.facets]),
+        )
+
         await conn.commit()
     return r_id
 

@@ -337,7 +337,12 @@ def resolve_role_family(text_or_title: str, ontology: OntologyGraph | None = Non
     """
     clean = text_or_title.strip().lower()
 
-    # 1. Ontology graph lookup if provided or cached
+    # 1. Direct key match first: an exact role name must win over ontology aliases
+    #    (the bare word "backend" is an alias of the fullstack role in the ontology).
+    if clean in ROLE_FACET_TEMPLATES:
+        return clean
+
+    # 2. Ontology graph lookup if provided or cached
     ont = ontology or get_ontology_graph()
     if ont:
         concept = ont.find_by_alias(clean)
@@ -345,10 +350,6 @@ def resolve_role_family(text_or_title: str, ontology: OntologyGraph | None = Non
             cid = concept.id.removeprefix("role:").lower()
             if cid in ROLE_FACET_TEMPLATES:
                 return cid
-
-    # 2. Direct key match
-    if clean in ROLE_FACET_TEMPLATES:
-        return clean
 
     # 3. Regex rule matching
     for pattern, role in ROLE_REGEX_MAP:

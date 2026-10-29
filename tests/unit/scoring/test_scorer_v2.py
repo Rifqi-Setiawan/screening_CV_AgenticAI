@@ -279,13 +279,67 @@ def test_band_capping_and_disagreement_manual_check():
     assert res_c.capped is True
     assert res_c.final_score == 49.0
 
-    # AGENT_DISAGREEMENT present -> Band R, recommendation MANUAL_CHECK
-    states_dispute = {"R1": "STRONG", "R2": "STRONG", "R3": "STRONG"}
-    res_dispute = score_v2(
-        states=states_dispute,
-        requirement_set=req_set,
-        flags=["AGENT_DISAGREEMENT"],
-    )
-    assert res_dispute.band == "R"
-    assert res_dispute.recommendation == "MANUAL_CHECK"
-    assert res_dispute.color == "gray"
+
+def test_agent_disagreement_is_a_review_signal_by_default():
+    """v2.2: disagreement keeps the score band, downgrades SHORTLIST to REVIEW and adds a review flag."""
+    req_set = _make_sample_req_set()
+    states = {"R1": "STRONG", "R2": "STRONG", "R3": "STRONG"}
+    res = score_v2(states=states, requirement_set=req_set, flags=["AGENT_DISAGREEMENT"])
+    assert res.band == "A"
+    assert res.recommendation == "REVIEW"
+    assert "AGENT_DISAGREEMENT_REVIEW" in res.flags
+
+
+def test_agent_disagreement_legacy_mode_forces_band_r(monkeypatch):
+    """v2.1 behaviour stays available behind AGENT_DISAGREEMENT_FORCES_BAND_R."""
+    from src.infrastructure.config import settings
+
+    monkeypatch.setattr(settings, "AGENT_DISAGREEMENT_FORCES_BAND_R", True)
+    req_set = _make_sample_req_set()
+    states = {"R1": "STRONG", "R2": "STRONG", "R3": "STRONG"}
+    res = score_v2(states=states, requirement_set=req_set, flags=["AGENT_DISAGREEMENT"])
+    assert res.band == "R"
+    assert res.recommendation == "MANUAL_CHECK"
+    assert res.color == "gray"
+
+
+def test_score_interval_collapses_without_unknown_and_widens_with_it():
+    req_set = _make_sample_req_set()
+    exact = score_v2(states={"R1": "STRONG", "R2": "STRONG", "R3": "STRONG"}, requirement_set=req_set)
+    assert exact.score_lo == exact.score_hi == exact.final_score
+    assert exact.interval_straddles_boundary is False
+
+    # R3 (NICE_TO_HAVE, weight 20) unknown: worst case 80, best case 100, point estimate 100.
+    wide = score_v2(states={"R1": "STRONG", "R2": "STRONG", "R3": "UNKNOWN"}, requirement_set=req_set)
+    assert wide.score_lo == 80.0
+    assert wide.score_hi == 100.0
+
+
+def test_interval_straddling_shortlist_cutoff_is_flagged():
+    req_set = _make_sample_req_set()
+    res2 = score_v2(states={"R1": "PARTIAL", "R2": "STRONG", "R3": "UNKNOWN"}, requirement_set=req_set)
+    # best case (25+30+20)/100 = 75 capped by band B at 74; worst case (25+30)/100 = 55
+    assert res2.score_lo < 70 <= res2.score_hi
+    assert res2.interval_straddles_boundary is True
+    assert "SCORE_INTERVAL_STRADDLES_SHORTLIST" in res2.flags
+
+
+def test_rank_orders_capped_candidates_by_raw_score_before_hash():
+    """Band caps give equal final scores; raw score decides the order inside the group, not the hash."""
+    req_set = _make_sample_req_set()
+    strongish = score_v2(
+        states={"R1": "PARTIAL", "R2": "STRONG", "R3": "STRONG"}, requirement_set=req_set
+    )  # B, raw 100 -> 74
+    weaker = score_v2(
+        states={"R1": "PARTIAL", "R2": "STRONG", "R3": "NOT_DEMONSTRATED"}, requirement_set=req_set
+    )  # B, raw lower
+    assert strongish.band == weaker.band == "B"
+    assert strongish.raw_score > weaker.raw_score
+    # force a final-score tie by capping both at the band cap
+    weaker.final_score = strongish.final_score = 74.0
+    items = [
+        {"candidate_id": "a", "result": weaker, "strong_count": 1},
+        {"candidate_id": "b", "result": strongish, "strong_count": 1},
+    ]
+    for run in ("r1", "r2", "r3", "r4", "r5", "r6"):
+        assert [x["candidate_id"] for x in rank_v2(items, run_id=run)] == ["b", "a"]

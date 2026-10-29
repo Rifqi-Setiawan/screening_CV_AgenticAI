@@ -14,10 +14,12 @@ Implements Section C2 S8 and C5 of the Blueprint:
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import uuid
 from pathlib import Path
 from typing import Any
 
+from src.agents.prompt_safety import DATA_RULE, atom_text_for_llm, fence_untrusted, neutralize_for_fence
 from src.agents.schemas.critic import (
     CriticFacetReview,
     CriticInput,
@@ -29,6 +31,7 @@ from src.agents.schemas.matcher import (
     FacetVerdict,
 )
 from src.domain.atoms import AtomKind, EvidenceAtom
+from src.infrastructure.config import settings
 from src.infrastructure.gateway import ModelGateway, parse_llm_json
 from src.infrastructure.logging import logger
 
@@ -53,8 +56,37 @@ T0_ATOM_KINDS = {
     "summary_claim",
 }
 
-# Band cutoffs for E2 border proximity check (+- 3 points)
-BAND_THRESHOLDS = (49.0, 50.0, 70.0, 74.0, 75.0)
+# Score boundaries that change a candidate's outcome: band C cap, shortlist cutoff, band B cap.
+# (50 and 75 are only colour breaks, so they no longer trigger an audit.)
+BAND_THRESHOLDS = (49.0, 70.0, 74.0)
+
+# Triggers that always justify a Critic call. E1 (a MUST_HAVE is not STRONG) is routine for weak
+# candidates, so it only counts when the candidate is inside the provisional top-K.
+ANOMALY_TRIGGERS = frozenset({"E2", "E3", "E4", "E5", "E6"})
+
+
+def _audit_draw(run_id: str, candidate_id: str) -> float:
+    """Deterministic uniform draw in [0, 1) so random audits are reproducible per run and candidate."""
+    digest = hashlib.sha256(f"{run_id}:{candidate_id}:critic-audit".encode()).hexdigest()
+    return int(digest[:8], 16) / 0x100000000
+
+
+def decide_critic_routing(
+    triggers: list[str],
+    in_top_k: bool,
+    run_id: str,
+    candidate_id: str,
+    audit_rate: float,
+) -> list[str]:
+    """Returns the reasons the Critic should audit this candidate (empty list = skip the Critic)."""
+    reasons = [t for t in triggers if t in ANOMALY_TRIGGERS]
+    if in_top_k:
+        reasons.append("TOP_K")
+        if "E1" in triggers:
+            reasons.append("E1")
+    if _audit_draw(run_id, candidate_id) < audit_rate:
+        reasons.append("RANDOM_AUDIT")
+    return sorted(set(reasons))
 
 
 def load_critic_system_prompt() -> str:
@@ -62,7 +94,7 @@ def load_critic_system_prompt() -> str:
     prompt_file = PROMPTS_DIR / "critic_v1.md"
     if not prompt_file.exists():
         raise FileNotFoundError(f"Critic system prompt not found at {prompt_file}")
-    return prompt_file.read_text(encoding="utf-8")
+    return prompt_file.read_text(encoding="utf-8") + "\n\n" + DATA_RULE
 
 
 def evaluate_escalation_triggers(
@@ -134,7 +166,11 @@ def evaluate_escalation_triggers(
         elif isinstance(requirement_scores, (int, float)):
             score_val = float(requirement_scores)
 
-    if score_val is not None and any(abs(score_val - boundary) <= 3.0 for boundary in BAND_THRESHOLDS):
+    margin = float(settings.CRITIC_BORDER_MARGIN)
+    if score_val is not None and any(abs(score_val - boundary) <= margin for boundary in BAND_THRESHOLDS):
+        triggers.add("E2")
+    # Score interval (UNKNOWN as best/worst case) straddling a boundary is also a border case.
+    if getattr(requirement_scores, "interval_straddles_boundary", False):
         triggers.add("E2")
 
     # --- E3: NLI vs Matcher disagreement ---
@@ -256,11 +292,12 @@ def build_critic_user_prompt(critic_input: CriticInput) -> str:
         lines.append(
             f'- Facet [{fkey}]: "{hyp}"\n'
             f"  Matcher Verdict: {matcher_verdict} (depth: {matcher_depth})\n"
-            f"  Matcher Analysis: {matcher_analysis}\n"
+            f"  Matcher Analysis: {neutralize_for_fence(str(matcher_analysis))}\n"
             f"  Claimed Support Atoms: {', '.join(supp_atoms) if supp_atoms else 'none'}"
         )
 
-    lines.append("\n### Candidate Evidence Atoms:")
+    lines.append("\n### Candidate Evidence Atoms (untrusted document data):")
+    atom_lines: list[str] = []
     for a in critic_input.atoms:
         akey = getattr(a, "atom_key", None) or (a.get("atom_key") if isinstance(a, dict) else "")
         akind = getattr(a, "kind", None) or (a.get("kind") if isinstance(a, dict) else "")
@@ -270,11 +307,12 @@ def build_critic_user_prompt(critic_input: CriticInput) -> str:
 
         claim_tag = " [T0/CLAIM/MENTION_ONLY]" if akind in T0_ATOM_KINDS or tier == "T0" else ""
         ref_str = f" [entry: {eref}]" if eref else ""
-        lines.append(f"- [{akey}] (kind: {akind}{ref_str}{claim_tag}): {text}")
+        atom_lines.append(f"- [{akey}] (kind: {akind}{ref_str}{claim_tag}): {atom_text_for_llm(str(text or ''))}")
+    lines.append(fence_untrusted("\n".join(atom_lines)))
 
     if critic_input.raw_title:
         lines.append(
-            f"\n### Candidate Stated Title: '{critic_input.raw_title}' (context_only, weak prior)\n"
+            f"\n### Candidate Stated Title: '{neutralize_for_fence(critic_input.raw_title)[:120]}' (context_only, weak prior)\n"
             "REMINDER: Do not allow stated title to justify ungrounded competency claims."
         )
 

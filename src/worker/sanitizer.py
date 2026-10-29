@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import re
@@ -9,6 +10,9 @@ import zipfile
 from dataclasses import dataclass, field
 
 import pymupdf
+
+from src.domain.text_hygiene import hygiene_flags, scan_injection
+from src.worker.visibility import filter_visible_spans
 
 INJECTION_PATTERNS = [
     re.compile(r"ignore\s+all\s+(?:previous|prior)\s+instructions", re.IGNORECASE),
@@ -28,6 +32,25 @@ COVER_LETTER_PATTERNS = [
     re.compile(r"dear\s+hiring\s+manager", re.IGNORECASE),
     re.compile(r"bersama\s+surat\s+ini", re.IGNORECASE),
 ]
+
+
+_DOCX_RUN = re.compile(r"<w:r(?:\s[^>]*)?>(.*?)</w:r>", re.DOTALL)
+_DOCX_TEXT = re.compile(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>")
+_DOCX_SIZE = re.compile(r'<w:sz\s+w:val="(\d+)"')
+_DOCX_WHITE = re.compile(r'<w:color\s+w:val="(?:FFFFFF|ffffff)"')
+
+
+def docx_hidden_run_count(document_xml: str) -> int:
+    """Counts text runs a reader cannot see: vanish property, white colour, or font below 4pt (sz is half-points)."""
+    count = 0
+    for run in _DOCX_RUN.findall(document_xml):
+        text = "".join(_DOCX_TEXT.findall(run)).strip()
+        if not text:
+            continue
+        size = _DOCX_SIZE.search(run)
+        if "<w:vanish" in run or _DOCX_WHITE.search(run) or (size and int(size.group(1)) < 8):
+            count += 1
+    return count
 
 
 @dataclass
@@ -120,25 +143,30 @@ def sanitize_file(content: bytes, filename: str) -> SanitizeResult:
                             txt = span.get("text", "").strip()
                             if not txt:
                                 continue
-                            if span.get("size", 10) < 4.0:
-                                has_hidden_text = True
-                            color = span.get("color", 0)
-                            if color in (16777215, 0xFFFFFF):
-                                has_hidden_text = True
                             for pat in INJECTION_PATTERNS:
                                 if pat.search(txt):
                                     has_injection = True
             except Exception:
                 pass
 
+        # Visibility gate: micro fonts, off-page text, and text that renders no ink (any colour that matches
+        # the background, or covered by a shape). White text on a dark band still renders ink and is kept.
+        with contextlib.suppress(Exception):
+            has_hidden_text = filter_visible_spans(doc, include_suspect=True).has_hidden_text
+
         page_count = len(doc)
         doc.close()
         full_text = "\n".join(full_text_parts).strip()
 
-        # Check injection across full text
+        # Check injection across full text (English + Indonesian phrases, chat-template markers)
         for pat in INJECTION_PATTERNS:
             if pat.search(full_text):
                 has_injection = True
+        if scan_injection(full_text):
+            has_injection = True
+        for extra_flag in hygiene_flags(full_text):
+            if extra_flag != "PROMPT_INJECTION" and extra_flag not in flags:
+                flags.append(extra_flag)
 
         if has_hidden_text:
             flags.append("HIDDEN_TEXT")
@@ -210,12 +238,23 @@ def sanitize_file(content: bytes, filename: str) -> SanitizeResult:
                         reasons=["INSUFFICIENT_CONTENT", "EMPTY_DOCUMENT"],
                         extracted_text=text,
                     )
+                docx_flags: list[str] = []
+                hidden_runs = docx_hidden_run_count(xml_content)
+                if hidden_runs:
+                    docx_flags.append("HIDDEN_TEXT")
+                has_injection = bool(scan_injection(text))
+                if has_injection:
+                    docx_flags.append("PROMPT_INJECTION")
+                docx_flags += [f for f in hygiene_flags(text) if f not in docx_flags]
                 return SanitizeResult(
                     is_valid=True,
                     status="RECEIVED",
                     sha256=sha256,
                     file_type="docx",
+                    flags=docx_flags,
                     extracted_text=text,
+                    has_hidden_text=hidden_runs > 0,
+                    has_injection=has_injection,
                 )
         except Exception:
             return SanitizeResult(
