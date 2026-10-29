@@ -68,6 +68,22 @@ di-deploy. Pengujian live ke beberapa CV dilakukan terakhir (lihat bagian "Perlu
   inferensi atribut terlindungi, audit trail `copilot_audit_log`.
 - Endpoint baru di `recruiter_assist.py`, migrasi `0014_recruiter_assist`.
 
+**Penjelasan skor dan penelusuran sumber (explainability)**
+- Temuan: tautan dari putusan facet ke kutipan CV tidak pernah tersimpan (kolom `support_atom_ids` bertipe uuid[] hanya
+  menerima UUID, sedangkan atom dirujuk lewat kunci seperti `E3.B4`; 0 dari 95 putusan pada run 19 CV punya tautan).
+  UI juga hanya menampilkan penjelasan versi v1 (template dari tabel `evidence`), tidak memakai data facet/atom/Critic yang
+  sudah dikirim API, dan penampil CV menampilkan teks karangan bila `full_text` kosong.
+- Migrasi `0015_facet_support_keys`: kolom `facet_judgments.support_atom_keys text[]`; pipeline dan Matcher menyimpan kunci atom.
+- `domain/score_trace.py` + `score_trace`, `full_text`, `source_highlights` pada `GET .../candidates/{id}`:
+  skor -> kriteria (bobot x nilai state = poin) -> facet (putusan, kedalaman, alasan, audit Critic) -> atom -> kalimat asli
+  di CV (kutipan verbatim + konteks, letak, tier bukti), alasan band dan rekomendasi, durasi per periode, arti tiap flag.
+  Angka akhir dihitung ulang dengan scorer yang sama dan dibandingkan dengan angka tersimpan; bila berbeda (run lama),
+  trace menyatakannya dan angka tersimpan tetap berlaku.
+- Pencocokan span atom diperketat: potongan yang memotong kalimat di tengah kata ditolak dan dicari ulang.
+- UI: tab baru "Asal-usul Skor" (`ScoreTrace.tsx`) dan penampil CV yang menyorot kalimat bukti dan melompat ke kutipan
+  yang dipilih; teks karangan pada penampil CV dihapus. Hasil run lama tetap tampil, dengan catatan bahwa kutipan sumber
+  baru tersedia setelah screening ulang.
+
 ## Konfigurasi baru
 
 `LLM_MAX_CONCURRENCY=8`, `SCREENING_CANDIDATE_CONCURRENCY=4`, `FACET_NARROWING_ENABLED=true`,

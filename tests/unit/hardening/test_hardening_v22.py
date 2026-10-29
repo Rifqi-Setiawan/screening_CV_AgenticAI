@@ -50,6 +50,10 @@ def test_span_matches_text_rejects_offsets_that_point_elsewhere():
     doc = "aaa bbb ccc ddd eee fff"
     assert span_matches_text(doc, 4, 7, "bbb")
     assert not span_matches_text(doc, 0, 3, "bbb")
+    sentence = "Membangun REST API pembayaran dengan FastAPI."
+    text = f"- {sentence} Lanjutan."
+    assert span_matches_text(text, 0, 2 + len(sentence), sentence)  # a leading bullet marker is tolerated
+    assert not span_matches_text(text, 2, 2 + len(sentence) - 6, sentence)  # a fragment that stops mid-word is not
 
 
 def _profile(text: str, **extra):

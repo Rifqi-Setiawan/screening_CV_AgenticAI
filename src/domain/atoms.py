@@ -8,7 +8,6 @@ Implements Grounding by Construction:
 
 from __future__ import annotations
 
-import difflib
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -280,7 +279,7 @@ class EvidenceAtom:
 
 
 _WS = re.compile(r"\s+")
-SPAN_MATCH_MIN_RATIO = 0.9
+SPAN_MATCH_SLACK = 3  # characters a slice may exceed the atom text by (a bullet marker, trailing punctuation)
 
 
 def _norm(text: str) -> str:
@@ -306,13 +305,15 @@ def locate_span(haystack: str, needle: str) -> tuple[int, int] | None:
 
 
 def span_matches_text(haystack: str, start: int, end: int, text: str) -> bool:
-    """Deterministic check that haystack[start:end] really is `text` (whitespace/case-insensitive, fuzzy >= 0.9)."""
+    """Deterministic check that haystack[start:end] really is `text` (whitespace/case-insensitive).
+
+    A slice that cuts the text short, or drifts by more than a few characters, is rejected: a quote shown to a
+    recruiter must be the whole sentence, never a fragment that ends mid-word.
+    """
     if not (0 <= start < end <= len(haystack)) or not text.strip():
         return False
     a, b = _norm(haystack[start:end]), _norm(text)
-    if a == b or b in a:
-        return True
-    return difflib.SequenceMatcher(None, a, b).ratio() >= SPAN_MATCH_MIN_RATIO
+    return a == b or (b in a and len(a) - len(b) <= SPAN_MATCH_SLACK)
 
 
 def _resolve_atom(

@@ -356,6 +356,7 @@ async def save_matcher_results(
             verdict=ev.verdict.value,
             depth_level=ev.depth_level.value,
             support_atom_ids=supp_uuids,
+            support_atom_keys=[str(a) for a in ev.support_atoms],
             method=method,
             analysis=ev.analysis,
             rationale_code=ev.rationale_code,

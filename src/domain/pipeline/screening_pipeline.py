@@ -838,6 +838,13 @@ class ScreeningPipeline:
                     analysis=getattr(j, "analysis", "") or (j.get("analysis", "") if isinstance(j, dict) else ""),
                     support_atom_ids=getattr(j, "support_atoms", [])
                     or (j.get("support_atoms", []) if isinstance(j, dict) else []),
+                    support_atom_keys=[
+                        str(k)
+                        for k in (
+                            getattr(j, "support_atoms", [])
+                            or (j.get("support_atoms", []) if isinstance(j, dict) else [])
+                        )
+                    ],
                     rationale_code=getattr(j, "rationale_code", None)
                     or (j.get("rationale_code") if isinstance(j, dict) else None),
                 )

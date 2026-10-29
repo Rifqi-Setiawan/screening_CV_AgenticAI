@@ -624,12 +624,15 @@ async def save_facet_judgment_to_db(
     depth_level: str | None = None,
     support_atom_ids: list[uuid.UUID] | None = None,
     method: str = "matcher",
+    support_atom_keys: list[str] | None = None,
     analysis: str | None = None,
     nli_p_entail: float | None = None,
     rationale_code: str | None = None,
     superseded_by_critic: bool = False,
 ) -> None:
     """Inserts or updates a facet evaluation judgment in `facet_judgments`."""
+    # Atoms are cited by key ("E3.B4"); keep them so a verdict can always be traced back to its evidence.
+    keys = list(dict.fromkeys(str(k) for k in (support_atom_keys or support_atom_ids or []) if k))
     valid_uuids: list[uuid.UUID] = []
     if support_atom_ids:
         for sa in support_atom_ids:
@@ -645,9 +648,9 @@ async def save_facet_judgment_to_db(
             INSERT INTO facet_judgments (
                 run_id, candidate_id, requirement_id, facet_key, tenant_id,
                 verdict, depth_level, support_atom_ids, method, analysis,
-                nli_p_entail, rationale_code, superseded_by_critic
+                nli_p_entail, rationale_code, superseded_by_critic, support_atom_keys
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (run_id, candidate_id, requirement_id, facet_key)
             DO UPDATE SET
                 verdict = EXCLUDED.verdict,
@@ -657,7 +660,8 @@ async def save_facet_judgment_to_db(
                 analysis = EXCLUDED.analysis,
                 nli_p_entail = EXCLUDED.nli_p_entail,
                 rationale_code = EXCLUDED.rationale_code,
-                superseded_by_critic = EXCLUDED.superseded_by_critic
+                superseded_by_critic = EXCLUDED.superseded_by_critic,
+                support_atom_keys = EXCLUDED.support_atom_keys
             """,
             (
                 run_id,
@@ -673,6 +677,7 @@ async def save_facet_judgment_to_db(
                 nli_p_entail,
                 rationale_code,
                 superseded_by_critic,
+                keys,
             ),
         )
         await conn.commit()

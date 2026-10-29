@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from src.api.dependencies import get_current_user, get_job_for_tenant, require_role
 from src.domain.explainer import generate_explanation
 from src.domain.models import User, UserRole
+from src.domain.score_trace import build_score_trace
 from src.domain.scorer import score
 from src.domain.screening_service import execute_screening_run
 from src.infrastructure.config import settings
@@ -228,7 +229,7 @@ async def _fetch_candidate_v2_artifacts(
     await cur.execute(
         """
         SELECT requirement_id, facet_key, verdict, depth_level,
-               support_atom_ids, method, analysis, nli_p_entail,
+               support_atom_ids, support_atom_keys, method, analysis, nli_p_entail,
                rationale_code, superseded_by_critic
         FROM facet_judgments
         WHERE run_id = %s AND candidate_id = %s AND tenant_id = %s
@@ -245,6 +246,7 @@ async def _fetch_candidate_v2_artifacts(
             "depth_level": r["depth_level"] or "L0",
             "analysis": r["analysis"] or "",
             "support_atom_ids": [str(a) for a in (r["support_atom_ids"] or [])],
+            "support_atom_keys": [str(a) for a in (r["support_atom_keys"] or [])],
             "method": r["method"],
             "nli_p_entail": float(r["nli_p_entail"]) if r["nli_p_entail"] is not None else None,
             "rationale_code": r["rationale_code"],
@@ -308,7 +310,7 @@ async def _fetch_candidate_v2_artifacts(
     # 4. Grounding Atoms
     all_supp_ids: set[str] = set()
     for fj in facet_judgments:
-        for sid in fj["support_atom_ids"]:
+        for sid in fj["support_atom_ids"] + fj["support_atom_keys"]:
             all_supp_ids.add(str(sid))
     for cr in critic_reviews:
         for sid in cr["support_atoms"]:
@@ -425,6 +427,109 @@ async def get_rankings(
         }
 
 
+async def _build_trace_for_candidate(
+    cur: Any,
+    run_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    cand_score: dict[str, Any],
+    req_states: dict[str, str],
+    v2: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None, list[dict[str, Any]]]:
+    """Score trace (score -> requirement -> facet -> atom -> CV sentence) plus the redacted CV text it points into."""
+    try:
+        await cur.execute(
+            """
+            SELECT sr.requirement_set_id, rset.category_weights
+            FROM screening_runs sr
+            LEFT JOIN requirement_sets rset ON rset.id = sr.requirement_set_id AND rset.tenant_id = sr.tenant_id
+            WHERE sr.id = %s AND sr.tenant_id = %s
+            """,
+            (run_id, tenant_id),
+        )
+        run_row = await cur.fetchone()
+        if not run_row:
+            return None, None, []
+        await cur.execute(
+            """
+            SELECT id, requirement_id, description, kind, category, importance, weight,
+                   target_domains, duration_policy, lint_flags
+            FROM requirements WHERE requirement_set_id = %s AND tenant_id = %s ORDER BY requirement_id
+            """,
+            (run_row["requirement_set_id"], tenant_id),
+        )
+        req_rows = await cur.fetchall()
+        await cur.execute(
+            "SELECT requirement_uuid, facet_key, hypothesis, core FROM requirement_facets "
+            "WHERE requirement_uuid = ANY(%s) ORDER BY facet_key",
+            ([r["id"] for r in req_rows],),
+        )
+        facets_by_req: dict[Any, list[dict[str, Any]]] = {}
+        for f in await cur.fetchall():
+            facets_by_req.setdefault(f["requirement_uuid"], []).append(
+                {"facet_key": f["facet_key"], "hypothesis": f["hypothesis"], "core": f["core"]}
+            )
+        requirements = []
+        for r in req_rows:
+            policy = r["duration_policy"]
+            if isinstance(policy, str):
+                policy = json.loads(policy or "{}")
+            requirements.append(
+                {
+                    "requirement_id": r["requirement_id"],
+                    "description": r["description"],
+                    "kind": r["kind"],
+                    "category": r["category"],
+                    "importance": r["importance"],
+                    "weight": float(r["weight"]),
+                    "target_domains": list(r["target_domains"] or []),
+                    "duration_policy": policy or {},
+                    "lint_flags": list(r["lint_flags"] or []),
+                    "facets": facets_by_req.get(r["id"], []),
+                }
+            )
+        await cur.execute(
+            """
+            SELECT cp.full_text_redacted
+            FROM candidate_profiles cp JOIN documents d ON d.id = cp.document_id
+            WHERE d.candidate_id = %s AND d.tenant_id = %s AND cp.full_text_redacted IS NOT NULL
+            LIMIT 1
+            """,
+            (candidate_id, tenant_id),
+        )
+        text_row = await cur.fetchone()
+        full_text = text_row["full_text_redacted"] if text_row else None
+        trace = build_score_trace(
+            stored={
+                "final_score": float(cand_score["final_score"] or 0),
+                "raw_score": float(cand_score["raw_score"] or 0),
+                "band": cand_score["band"],
+                "recommendation": cand_score["recommendation"],
+                "flags": list(cand_score["flags"] or []),
+                "coverage": float(cand_score["coverage"]) if cand_score.get("coverage") is not None else None,
+            },
+            requirements=requirements,
+            requirement_states=req_states,
+            category_weights=(run_row["category_weights"] or {}),
+            facet_judgments=v2["facet_judgments"],
+            critic_reviews=v2["critic_reviews"],
+            domain_durations=v2["domain_durations"],
+            atoms=v2["grounding_atoms"],
+            full_text=full_text,
+        )
+    except Exception as exc:  # the trace is additive: never break the existing detail response
+        from src.infrastructure.logging import logger
+
+        logger.warning(f"score trace unavailable for candidate {candidate_id}: {exc}")
+        return None, None, []
+
+    refs = {
+        a["atom_key"]: a for req in trace["requirements"] for f in req["facets"] for a in f["evidence"] if a.get("span")
+    }
+    highlights = [{"atom_key": k, "start": a["span"][0], "end": a["span"][1]} for k, a in sorted(refs.items())]
+    return trace, full_text, highlights
+
+
 @router.get("/{run_id}/candidates/{candidate_id}")
 async def get_candidate_detail(
     job_id: uuid.UUID,
@@ -447,7 +552,7 @@ async def get_candidate_detail(
         # Fetch candidate score
         await cur.execute(
             """
-            SELECT cs.rank, cs.final_score, cs.raw_score, cs.band, cs.recommendation,
+            SELECT cs.rank, cs.final_score, cs.raw_score, cs.band, cs.recommendation, cs.coverage,
                    cs.category_scores as category_breakdown, cs.flags, d.original_filename as file_name
             FROM candidate_scores cs
             JOIN documents d ON cs.document_id = d.id AND d.tenant_id = cs.tenant_id
@@ -531,6 +636,9 @@ async def get_candidate_detail(
         }
 
         v2_artifacts = await _fetch_candidate_v2_artifacts(cur, run_id, cv_id, current_user.tenant_id)
+        score_trace, full_text, highlights = await _build_trace_for_candidate(
+            cur, run_id, cv_id, current_user.tenant_id, cand_score, req_states, v2_artifacts
+        )
 
         return {
             "cv_id": str(cv_id),
@@ -551,6 +659,9 @@ async def get_candidate_detail(
             "domain_durations": v2_artifacts["domain_durations"],
             "critic_reviews": v2_artifacts["critic_reviews"],
             "grounding_atoms": v2_artifacts["grounding_atoms"],
+            "score_trace": score_trace,
+            "full_text": full_text,
+            "source_highlights": highlights,
         }
 
 

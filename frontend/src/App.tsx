@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import type { CandidateDetail, Requirement } from './types'
+import { CvTextViewer, ScoreTracePanel } from './ScoreTrace'
 import { ROLE_TEMPLATES } from './jobTemplates'
 
 export default function App() {
@@ -111,8 +112,9 @@ Persyaratan:
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([])
   const [isCompareOpen, setIsCompareOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
-  const [activeDrawerTab, setActiveDrawerTab] = useState<'ringkasan' | 'kartu_skor' | 'cv_asli' | 'riwayat'>('ringkasan')
+  const [activeDrawerTab, setActiveDrawerTab] = useState<'ringkasan' | 'jejak' | 'kartu_skor' | 'cv_asli' | 'riwayat'>('ringkasan')
   const [selectedQuoteToHighlight, setSelectedQuoteToHighlight] = useState<string | null>(null)
+  const [selectedAtomKey, setSelectedAtomKey] = useState<string | null>(null)
 
   // Policy Linter for prohibited criteria (physical appearance only; religion & gender are permitted)
   const prohibitedFlags = useMemo(() => {
@@ -804,6 +806,8 @@ Persyaratan:
   const handleSelectCandidate = async (cand: CandidateDetail) => {
     setSelectedCandidate(cand)
     setActiveDrawerTab('ringkasan')
+    setSelectedAtomKey(null)
+    setSelectedQuoteToHighlight(null)
     if (currentJobId && currentRunId) {
       try {
         const res = await fetch(`/api/v1/jobs/${currentJobId}/screenings/${currentRunId}/candidates/${cand.cv_id}`, {
@@ -820,6 +824,9 @@ Persyaratan:
               explanation: detail.explanation || prev.explanation,
               category_breakdown: detail.category_breakdown || prev.category_breakdown,
               flags: detail.flags || prev.flags,
+              score_trace: detail.score_trace ?? prev.score_trace,
+              full_text: detail.full_text ?? prev.full_text,
+              source_highlights: detail.source_highlights ?? prev.source_highlights,
             }
           })
         }
@@ -2505,12 +2512,20 @@ Persyaratan:
                 1. Ringkasan Evaluasi
               </button>
               <button
+                onClick={() => setActiveDrawerTab('jejak')}
+                className={`py-3 px-3 border-b-2 transition-colors ${
+                  activeDrawerTab === 'jejak' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                2. Asal-usul Skor
+              </button>
+              <button
                 onClick={() => setActiveDrawerTab('kartu_skor')}
                 className={`py-3 px-3 border-b-2 transition-colors ${
                   activeDrawerTab === 'kartu_skor' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                2. Kartu Skor Kriteria
+                3. Kartu Kriteria
               </button>
               <button
                 onClick={() => setActiveDrawerTab('cv_asli')}
@@ -2518,7 +2533,7 @@ Persyaratan:
                   activeDrawerTab === 'cv_asli' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                3. Berkas CV & Kutipan
+                4. Berkas CV & Kutipan
               </button>
               <button
                 onClick={() => setActiveDrawerTab('riwayat')}
@@ -2526,7 +2541,7 @@ Persyaratan:
                   activeDrawerTab === 'riwayat' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                4. Riwayat & Keputusan
+                5. Riwayat & Keputusan
               </button>
             </div>
 
@@ -2582,7 +2597,19 @@ Persyaratan:
                 </div>
               )}
 
-              {/* Tab 2: Kartu Skor Kriteria */}
+              {/* Tab 2: Asal-usul Skor (score trace: score -> criterion -> facet -> CV sentence) */}
+              {activeDrawerTab === 'jejak' && (
+                <ScoreTracePanel
+                  trace={selectedCandidate.score_trace}
+                  onShowInCv={(atomKey) => {
+                    setSelectedQuoteToHighlight(null)
+                    setSelectedAtomKey(atomKey)
+                    setActiveDrawerTab('cv_asli')
+                  }}
+                />
+              )}
+
+              {/* Tab 3: Kartu Skor Kriteria */}
               {activeDrawerTab === 'kartu_skor' && (
                 <div className="space-y-3">
                   {requirements.map((r) => {
@@ -2612,6 +2639,7 @@ Persyaratan:
                             <p className="text-slate-600 italic">"{evList[0].quote}"</p>
                             <button
                               onClick={() => {
+                                setSelectedAtomKey(null)
                                 setSelectedQuoteToHighlight(evList[0].quote)
                                 setActiveDrawerTab('cv_asli')
                               }}
@@ -2635,20 +2663,25 @@ Persyaratan:
                 <div className="space-y-3">
                   <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200 text-xs flex items-center justify-between">
                     <span>Penampil Teks Asli Berkas: <strong>{selectedCandidate.file_name}</strong></span>
-                    {selectedQuoteToHighlight && (
+                    {(selectedQuoteToHighlight || selectedAtomKey) && (
                       <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-bold">
                         Menyorot Kutipan Terpilih
                       </span>
                     )}
                   </div>
-                  <div className="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs whitespace-pre-wrap leading-relaxed max-h-[500px] overflow-y-auto border border-slate-800">
-                    {selectedCandidate.full_text || `--- Teks Terbaca dari Berkas (${selectedCandidate.file_name}) ---
-Pengalaman Kerja:
-${Object.values(selectedCandidate.evidence).flat().map((e) => `• ${e.quote}`).join('\n')}
-
-Pendidikan:
-S1 Teknik Informatika / Ilmu Komputer.`}
-                  </div>
+                  {selectedCandidate.full_text ? (
+                    <CvTextViewer
+                      text={selectedCandidate.full_text}
+                      highlights={selectedCandidate.source_highlights || []}
+                      focusKey={selectedAtomKey}
+                      fallbackQuote={selectedQuoteToHighlight}
+                    />
+                  ) : (
+                    <div className="p-4 border border-dashed border-slate-300 rounded-xl text-xs text-slate-500">
+                      Teks berkas tidak tersedia untuk kandidat ini, jadi kutipan tidak dapat disorot di naskah. Ini bisa terjadi pada hasil lama
+                      atau berkas tanpa lapisan teks (hasil scan gambar).
+                    </div>
+                  )}
                 </div>
               )}
 

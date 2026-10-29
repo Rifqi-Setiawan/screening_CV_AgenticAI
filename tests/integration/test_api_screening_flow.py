@@ -310,6 +310,19 @@ async def test_full_agentic_v21_pipeline_ingestion_screening_and_api(
     assert "critic_reviews" in detail_data
     assert "grounding_atoms" in detail_data
 
+    # Score trace: every verdict can be followed back to the CV sentence it rests on
+    trace = detail_data["score_trace"]
+    assert trace is not None and trace["requirements"]
+    facets = [f for r in trace["requirements"] for f in r["facets"]]
+    assert any(f["evidence"] for f in facets), "supporting atoms must survive persistence"
+    assert all(f["evidence_tracked"] for f in facets if f["evidence"])
+    assert detail_data["full_text"] and trace["source_available"]
+    assert detail_data["source_highlights"], "cited atoms must be located in the stored CV text"
+    first = next(e for f in facets for e in f["evidence"] if e["source_found"])
+    assert first["quote"] in detail_data["full_text"]
+    assert trace["summary"]["band"] == detail_data["band"]
+    assert trace["summary"]["band_reason"] and all(r["why"] for r in trace["requirements"])
+
     # 6. Recruiter assist (v2.2): probes, interview answers (re-score), Copilot tools + audit trail
     base = f"/api/v1/jobs/{job_id}/screenings/{run_id}"
     probes_res = await client.get(f"{base}/candidates/{cand_id_str}/probes?budget=3", headers=headers)
