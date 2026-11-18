@@ -90,15 +90,8 @@ summary:hover { background-color: #f8f9fa; }
 th { font-size: 11px; font-weight: 600; white-space: nowrap; }
 td { vertical-align: middle; }
 .application-row:hover { background: #fafafb; }
-.selected-row { background: #fff7ed; }
-.application-link { color: #4c413a; font-weight: 600; min-height: 36px; text-align: left; }
+.application-link { display: inline-flex; align-items: center; color: #4c413a; font-weight: 600; min-height: 36px; text-align: left; text-decoration: none; }
 .application-link:hover { color: var(--accent); text-decoration: underline; }
-.candidate-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; border-top: 1px solid var(--line); padding-top: 22px; }
-.candidate-form, .candidate-assessment { min-width: 0; overflow-wrap: anywhere; }
-.candidate-assessment { border-left: 1px solid var(--line); padding-left: 24px; }
-.candidate-assessment .grid { grid-template-columns: minmax(0, 1fr); }
-.pane-title { font-size: 15px; font-weight: 650; }
-.pane-description { color: var(--muted); font-size: 12px; margin: 4px 0 22px; }
 .form-summary > p:first-child { padding-bottom: 20px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .form-summary > p:first-child strong { display: block; font-size: 20px; margin-bottom: 6px; }
 .form-summary ul { margin-top: 8px; }
@@ -124,8 +117,6 @@ td { vertical-align: middle; }
   .workspace { grid-template-columns: 190px minmax(0, 1fr); }
   .workspace-content { padding: 24px 22px 40px; }
   .workspace-toolbar { padding: 14px 22px; }
-  .candidate-layout { grid-template-columns: minmax(0, 1fr); }
-  .candidate-assessment { border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; }
 }
 @media (max-width: 700px) {
   .workspace { grid-template-columns: minmax(0, 1fr); }

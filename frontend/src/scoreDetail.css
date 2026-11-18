@@ -75,10 +75,9 @@
 .sd-gauge-text { font-size: 26px; font-weight: 700; fill: var(--ink); }
 .sd-gauges figcaption { margin-top: 2px; font-size: 12px; font-weight: 600; }
 
-.sd-bars { display: flex; align-items: stretch; gap: 8px; height: 130px; margin-top: 14px; }
-.sd-bar-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.sd-bar-value { font-size: 10px; color: var(--muted); }
-.sd-bar-area { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.sd-bars { display: flex; align-items: flex-end; gap: 8px; margin-top: 14px; }
+.sd-bar-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; }
+.sd-bar-value { font-size: 11px; color: var(--muted); }
 .sd-bar { display: block; width: 100%; border-radius: 4px 4px 0 0; background: #d9dce1; }
 .sd-bar.current { background: var(--accent-strong); }
 .sd-bar-col small { font-size: 10px; color: var(--muted); white-space: nowrap; }

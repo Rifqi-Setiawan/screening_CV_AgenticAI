@@ -1,6 +1,6 @@
 import { categories } from './tigTypes'
 import { evidenceStyle } from './tigApplication'
-import type { Assessment, AssessmentResult, Category, CategoryResult, HistoryEntry, Trace } from './tigTypes'
+import type { Assessment, Category, CategoryResult, HistoryEntry, Trace } from './tigTypes'
 
 const attributeLabels: Record<string, string> = {
   BIRTH: 'tempat/tanggal lahir', AGE: 'usia', RELIGION: 'agama', GENDER: 'jenis kelamin', MARITAL: 'status pernikahan',
@@ -73,28 +73,6 @@ export function Breakdown({ result, weights }: { result: Assessment; weights?: R
   </div>
 }
 
-function ScoreMath({ result, weights }: { result: Assessment; weights: Record<Category, number> }) {
-  if (!result.categories || result.weighted_reference === undefined) return null
-  const difference = result.weighted_difference ?? 0
-  return <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm">
-    <p className="font-semibold text-indigo-950">Bagaimana skor {result.score} terbentuk</p>
-    <div className="mt-2 overflow-x-auto">
-      <table className="w-full min-w-sm text-left">
-        <thead className="text-indigo-900"><tr><th className="py-1 pr-3">Kriteria</th><th className="py-1 pr-3">Bobot</th><th className="py-1 pr-3">Subskor</th><th className="py-1">Kontribusi</th></tr></thead>
-        <tbody>{(Object.keys(categories) as Category[]).map(key => <tr key={key} className="border-t border-indigo-100">
-          <td className="py-1 pr-3">{categories[key]}</td><td className="py-1 pr-3">{weights[key]}%</td>
-          <td className="py-1 pr-3">{result.categories![key].score}</td><td className="py-1">{(weights[key] * result.categories![key].score / 100).toFixed(1)}</td>
-        </tr>)}
-          <tr className="border-t border-indigo-200 font-semibold"><td className="py-1 pr-3" colSpan={3}>Rata-rata berbobot</td><td className="py-1">{result.weighted_reference.toFixed(1)}</td></tr>
-          <tr className="font-semibold"><td className="py-1 pr-3" colSpan={3}>Skor akhir dari AI</td><td className="py-1">{result.score} ({difference > 0 ? '+' : ''}{difference.toFixed(1)})</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p className="mt-2 text-indigo-900">Sesuai aturan TIG, bobot adalah pedoman. Skor akhir ditentukan AI secara holistik, sehingga bisa sedikit berbeda dari rata-rata berbobot dan dari penilaian ulang.</p>
-    {result.score_reasoning && <p className="mt-2"><strong>Alasan AI:</strong> {result.score_reasoning}</p>}
-  </div>
-}
-
 export function TraceDetails({ trace, assessedAt }: { trace: Trace; assessedAt: string | null }) {
   const { hidden, attributes, links } = trace.sanitization
   return <>
@@ -134,20 +112,4 @@ export function HistoryDetails({ history }: { history: HistoryEntry[] }) {
       <p className="text-slate-600">{entry.assessment.summary}</p>
     </li>)}</ul>
   </details>
-}
-
-export default function ScoreExplanation({ result, assessedAt, history }: {
-  result: AssessmentResult; assessedAt: string | null; history: HistoryEntry[]
-}) {
-  const weights = result.trace?.weights ?? null
-  return <div className="space-y-4">
-    {result.primary && <p className="text-sm"><strong>Posisi utama</strong> · {result.primary}. Prioritas {result.priorities?.join(' → ')}.</p>}
-    {weights && <ScoreMath result={result} weights={weights} />}
-    {!weights && result.score_reasoning && <p className="text-sm"><strong>Alasan AI:</strong> {result.score_reasoning}</p>}
-    <Breakdown result={result} weights={weights} />
-    {result.options && <OptionsDetails options={result.options} />}
-    {result.trace ? <TraceDetails trace={result.trace} assessedAt={assessedAt} />
-      : <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">Penilaian ini dibuat sebelum rincian transparansi tersedia. Nilai ulang untuk melihat data yang dilihat AI dan bukti per kategori.</p>}
-    {history.length > 0 && <HistoryDetails history={history} />}
-  </div>
 }

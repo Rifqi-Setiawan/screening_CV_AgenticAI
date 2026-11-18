@@ -37,7 +37,7 @@ export function MiniBars({ points, label }: { points: { score: number; label: st
   return <div className="sd-bars" role="img" aria-label={label}>
     {points.map((point, index) => <div key={index} className="sd-bar-col">
       <span className="sd-bar-value">{Math.round(point.score)}</span>
-      <span className="sd-bar-area"><span className={'sd-bar' + (point.current ? ' current' : '')} style={{ height: Math.max(4, clamp(point.score)) + '%' }} /></span>
+      <span className={'sd-bar' + (point.current ? ' current' : '')} style={{ height: Math.max(4, clamp(point.score) * 0.9) + 'px' }} />
       <small>{point.label}</small>
     </div>)}
   </div>
