@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rewriteRelativeImportExtensions": true,
+    "outDir": ".unit-build",
+    "rootDir": "src",
+    "types": []
+  },
+  "include": ["src/route.ts", "src/scoreView.ts"]
+}

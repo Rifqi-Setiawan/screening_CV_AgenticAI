@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:unit": "tsc -p tsconfig.unit.json && node --test unit/*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
