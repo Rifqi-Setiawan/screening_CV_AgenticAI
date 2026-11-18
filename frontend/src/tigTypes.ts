@@ -1,3 +1,4 @@
+import { describeDetail } from './requestErrors.ts'
 export type Degree = 'SMA/SMK' | 'D3' | 'D4' | 'S1' | 'S2' | 'S3'
 export type WorkMode = 'WFO' | 'Hybrid' | 'Remote'
 export type Stage = 'Seleksi' | 'Asesmen' | 'Interview' | 'SPK' | 'Ditolak'
@@ -94,10 +95,7 @@ export async function tigRequest<T>(url: string, options?: RequestInit): Promise
   if (!result.ok) {
     const data = await result.json().catch(() => null)
     const message = typeof data?.detail === 'string' ? data.detail
-      : Array.isArray(data?.detail) ? data.detail.map((item: { msg: string; loc: string[] }) => {
-          const field = item.loc.slice(1).join('.')
-          return (field ? field + ' — ' : '') + item.msg
-        }).join('; ')
+      : Array.isArray(data?.detail) ? describeDetail(data.detail)
         : 'Permintaan gagal (' + result.status + ').'
     throw new RequestError(message, result.status)
   }
