@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Account } from './ApplicantPortal'
-import { blankEducation, blankExperience, intakeProblems } from './intakeRules'
+import { blankEducation, blankExperience, intakeProblems, normalizeEnd, shownEnd } from './intakeRules'
 import { Alert, box, CampusSuggestions, cleanLines, Field, grid, input, Lines, NumberField, Options, primary, secondary, sectionTitle } from './TigFields'
 import { degrees, emptyApplication, jsonOptions, modes, RequestError, tigRequest } from './tigTypes'
 import type { Application, Education, Experience } from './tigTypes'
@@ -39,6 +39,11 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
     if (error instanceof RequestError && error.status === 401) onAuthLost()
     else setError(error instanceof Error ? error.message : fallback)
   }
+
+  // Move focus to the list of problems once it is rendered, so screen readers announce it and keyboard users land on it.
+  useEffect(() => {
+    if (problems.length) problemsBox.current?.focus()
+  }, [problems])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -81,7 +86,8 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
       for (const [field, label] of listFields) {
         const values = result.form[field]
         if (isEmpty(field) && values?.length) {
-          Object.assign(next, { [field]: values })
+          const shown = field === 'experiences' ? (values as Experience[]).map(row => ({ ...row, end: shownEnd(row.end) })) : values
+          Object.assign(next, { [field]: shown })
           changes.push(label + ' (' + values.length + ')')
         }
       }
@@ -106,13 +112,10 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
     setError('')
     const found = intakeProblems(form, { consent, freshGraduate })
     setProblems(found)
-    if (found.length) {
-      requestAnimationFrame(() => problemsBox.current?.focus())
-      return
-    }
+    if (found.length) return
     setWorking(true)
     try {
-      const experiences = form.experiences.filter(row => !blankExperience(row))
+      const experiences = form.experiences.filter(row => !blankExperience(row)).map(row => ({ ...row, end: normalizeEnd(row.end) }))
       const prepared = {
         ...form, projects: cleanLines(form.projects), skills: cleanLines(form.skills),
         languages: cleanLines(form.languages), certifications: cleanLines(form.certifications), links: cleanLines(form.links),

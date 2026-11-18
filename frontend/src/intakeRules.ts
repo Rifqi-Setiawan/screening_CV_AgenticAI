@@ -10,6 +10,12 @@ const degreesWithGpa = ['D3', 'D4', 'S1', 'S2', 'S3']
 
 export type IntakeFlags = { consent: boolean; freshGraduate: boolean }
 
+// The AI scoring rules key on the literal "present" for a job that is still held, so any "still working" wording
+// is stored as that literal. The form shows it as "Sekarang".
+const stillWorking = /^(present|now|current|sekarang|saat ini|kini)$/i
+export const normalizeEnd = (end: string) => stillWorking.test(end.trim()) ? 'present' : end
+export const shownEnd = (end: string) => end === 'present' ? 'Sekarang' : end
+
 export const blankEducation = (row: Education) => !row.level && !row.campus.trim() && !row.major.trim() && row.gpa === null
 export const blankExperience = (row: Experience) => ![row.title, row.organization, row.start, row.end, row.description].some(value => value.trim())
 

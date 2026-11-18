@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { blankEducation, blankExperience, intakeProblems } from '../.unit-build/intakeRules.js'
+import { blankEducation, blankExperience, intakeProblems, normalizeEnd, shownEnd } from '../.unit-build/intakeRules.js'
+
+test('"still working" wording is stored as the literal the AI rule expects, and shown as Sekarang', () => {
+  for (const value of ['Sekarang', 'sekarang', ' Saat ini ', 'kini', 'Present', 'now', 'current']) assert.equal(normalizeEnd(value), 'present', value)
+  for (const value of ['2025-12', 'Des 2025', '2024', '']) assert.equal(normalizeEnd(value), value)
+  assert.equal(shownEnd('present'), 'Sekarang')
+  assert.equal(shownEnd('2025-12'), '2025-12')
+})
 
 // Mirrors tests/test_tig_intake_rules.py on the server: the form must catch the same problems before submit.
 const valid = () => ({
