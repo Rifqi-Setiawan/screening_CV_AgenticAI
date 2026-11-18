@@ -436,6 +436,8 @@ jenis kelamin, identitas, atau kontak. Tidak ada syarat gugur, ambang lulus, ata
 Untuk junior pertimbangkan proyek relevan dan potensi fresh graduate. Pertimbangkan konteks sertifikat bahasa.
 Jenjang, nama program, atau rentang tahun saja tidak membuktikan kelulusan. Sebut kandidat telah lulus,
 menyelesaikan studi, atau memperoleh gelar hanya jika formulir menyatakan itu secara eksplisit.
+Formulir tidak memiliki isian status kelulusan, jadi jangan menjadikan ketiadaannya kekurangan dan jangan
+mengurangi skor karenanya; cukup jangan menyatakan kelulusan tanpa bukti.
 Untuk pengalaman dengan akhir 'present', perlakukan sebagai keterangan saat CV dibuat. Utamakan durasi
 yang tertulis; jangan hitung hingga tanggal sekarang tanpa konfirmasi status terkini.
 Untuk posisi reguler, gunakan bobot sebagai panduan, lalu tentukan skor akhir secara holistik.
@@ -455,7 +457,7 @@ jika skor akhir berbeda dari rata-rata berbobot subskor.
 Jawab JSON saja sesuai skema yang diberikan; semua properti yang diwajibkan harus diisi.
 """
 # Bump when SYSTEM_PROMPT or the response schema changes, so HR can tell which rules produced a score.
-PROMPT_VERSION = "tig-2026-11-18"
+PROMPT_VERSION = "tig-2026-11-18b"
 
 
 async def assess_application(application: Application, title: str, config: TigConfig, tenant_id: UUID) -> dict:
@@ -473,7 +475,9 @@ async def assess_application(application: Application, title: str, config: TigCo
             tenant_id=tenant_id,
             json_mode=True,
         ),
-        timeout=90,
+        # The model gateway can take 2+ minutes on a slow upstream (observed 113-136s); the HTTP client's own
+        # 180s limit still applies. A shorter limit here threw away answers the model had already produced.
+        timeout=240,
     )
     result = None
     if isinstance(data, dict):
