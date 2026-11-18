@@ -26,8 +26,13 @@ def fresh_rate_limits():
 FORM = {
     "full_name": "Pelamar Sintetis",
     "email": "kontak@example.org",
+    "phone": "081234567890",
     "education": [{"level": "S1", "campus": "Kampus Contoh", "major": "Informatika", "gpa": 3.4}],
     "skills": ["Python", "SQL"],
+    "preferences": {"domicile": "Bandung", "expected_salary": 8_000_000},
+    # Required since the intake rules: an applicant with no work history declares it explicitly, and consents.
+    "fresh_graduate": True,
+    "consent": True,
 }
 
 

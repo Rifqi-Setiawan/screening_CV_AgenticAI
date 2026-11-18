@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -14,7 +15,7 @@ from src.api.dependencies import get_current_user, get_job_for_tenant
 from src.api.middleware.rate_limiter import check_rate_limit
 from src.api.routes.applicant import Applicant, get_current_applicant
 from src.domain.models import User
-from src.domain.tig import Application, Stage, StrictModel, TigConfig, score_category
+from src.domain.tig import Application, ApplicationSubmission, Stage, StrictModel, TigConfig, score_category
 from src.infrastructure.config import settings
 from src.infrastructure.database import get_connection
 from src.worker.tig_prefill import prefill_form
@@ -142,8 +143,11 @@ ALREADY_APPLIED = "Anda sudah mengirim lamaran untuk lowongan ini. Pantau status
 
 
 @router.post(public, status_code=202, dependencies=[Depends(check_rate_limit(8))])
-async def submit(job_id: UUID, application: Application, applicant: Applicant = Depends(get_current_applicant)):
+async def submit(job_id: UUID, submission: ApplicationSubmission, applicant: Applicant = Depends(get_current_applicant)):
     key = encryption_key()
+    application = Application.model_validate(
+        {**submission.model_dump(exclude={"consent", "fresh_graduate"}), "consent_at": datetime.now(timezone.utc).isoformat()}
+    )
     application_id = uuid4()
     try:
         async with get_connection() as conn, conn.cursor() as cur:

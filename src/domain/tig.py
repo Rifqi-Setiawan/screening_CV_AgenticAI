@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic_core import PydanticCustomError
 
 from src.domain.protected_attributes import scrub_protected_attributes
 from src.domain.text_hygiene import scan_injection
@@ -23,6 +24,7 @@ Note = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1800)]
 Score = Annotated[int, Field(strict=True, ge=0, le=100)]
 Money = Annotated[int, Field(ge=0, le=10**10)]
 GPA = Annotated[float, Field(ge=0, le=4)]
+Url = Annotated[str, StringConstraints(strip_whitespace=True, max_length=300, pattern=r"^(?i:https?)://[^\s]+$")]
 Degree = Literal["SMA/SMK", "D3", "D4", "S1", "S2", "S3"]
 WorkMode = Literal["WFO", "Hybrid", "Remote"]
 Stage = Literal["Seleksi", "Asesmen", "Interview", "SPK", "Ditolak"]
@@ -54,7 +56,9 @@ class Preferences(StrictModel):
     open_to_placement: bool | None = None
 
 
-class Application(StrictModel):
+class ApplicantFields(StrictModel):
+    """Everything an applicant types into the form."""
+
     full_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
     email: Annotated[
         str, StringConstraints(strip_whitespace=True, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -70,6 +74,58 @@ class Application(StrictModel):
     certifications: list[Text] = Field(default_factory=list, max_length=20)
     preferences: Preferences = Field(default_factory=Preferences)
     priority: list[Text] = Field(default_factory=list, max_length=12)
+    links: list[Url] = Field(default_factory=list, max_length=5)
+    available_from: Text = ""
+
+
+class Application(ApplicantFields):
+    """The stored form. Lenient, so every application already in the database still loads.
+
+    consent_at is set by the server when the application is submitted; the client cannot send it.
+    """
+
+    consent_at: str = ""
+
+
+DEGREES_WITH_GPA = {"D3", "D4", "S1", "S2", "S3"}
+
+
+class ApplicationSubmission(ApplicantFields):
+    """Submit body: the form plus the applicant's declarations. Required fields are enforced here only."""
+
+    consent: bool = False
+    fresh_graduate: bool = False
+
+    @model_validator(mode="after")
+    def required_for_submission(self):
+        problems: list[str] = []
+        if not self.phone:
+            problems.append("Nomor telepon wajib diisi.")
+        if not self.preferences.domicile.strip():
+            problems.append("Domisili wajib diisi.")
+        if not self.education:
+            problems.append("Pendidikan terakhir wajib diisi (jenjang, sekolah atau kampus, dan jurusan).")
+        for number, row in enumerate(self.education, 1):
+            missing = [label for label, value in (("jenjang", row.level), ("sekolah atau kampus", row.campus), ("jurusan", row.major)) if not value]
+            if missing:
+                problems.append(f"Pendidikan #{number}: {', '.join(missing)} wajib diisi.")
+            if row.level in DEGREES_WITH_GPA and row.gpa is None:
+                problems.append(f"Pendidikan #{number}: IPK wajib diisi untuk jenjang {row.level}.")
+        if not self.skills:
+            problems.append("Minimal satu keahlian wajib diisi.")
+        if not self.experiences and not self.fresh_graduate:
+            problems.append("Isi minimal satu pengalaman kerja, atau centang bahwa Anda belum berpengalaman.")
+        for number, row in enumerate(self.experiences, 1):
+            missing = [label for label, value in (("posisi", row.title), ("organisasi", row.organization), ("tanggal mulai", row.start)) if not value]
+            if missing:
+                problems.append(f"Pengalaman #{number}: {', '.join(missing)} wajib diisi.")
+        if not self.preferences.expected_salary:
+            problems.append("Ekspektasi gaji bulanan wajib diisi.")
+        if not self.consent:
+            problems.append("Persetujuan pemrosesan data pribadi wajib dicentang.")
+        if problems:
+            raise PydanticCustomError("required_fields", "{problems}", {"problems": " ".join(problems)})
+        return self
 
 
 class Weights(StrictModel):
