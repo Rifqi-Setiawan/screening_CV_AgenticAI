@@ -116,7 +116,7 @@ export default function TigApplicationPage({ jobTitle, applicationId, detail, ro
           </dl>
         </> : <>
           <p className="sd-big">—</p>
-          <p className="sd-sub">Muncul setelah skor lamaran ini tersedia.</p>
+          <p className="sd-sub">{rows.length ? 'Muncul setelah skor lamaran ini tersedia.' : 'Menghitung dari daftar lamaran…'}</p>
         </>}
       </Card>
 
