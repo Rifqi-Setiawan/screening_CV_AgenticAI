@@ -1,4 +1,15 @@
-import type { Application, AssessmentResult, HistoryEntry, Stage } from './tigTypes'
+import type { Application, AssessmentResult, Category, EvidenceStatus, HistoryEntry, Stage } from './tigTypes'
+
+export const evidenceStyle: Record<EvidenceStatus, [string, string]> = {
+  found: ['bg-emerald-100 text-emerald-900', 'Ada di formulir'],
+  partial: ['bg-amber-100 text-amber-900', 'Sebagian cocok'],
+  not_found: ['bg-rose-100 text-rose-900', 'Tidak ditemukan di formulir'],
+}
+
+export const categoryColor: Record<Category, string> = {
+  skills: 'var(--cat-skills)', experience: 'var(--cat-experience)',
+  education: 'var(--cat-education)', preferences: 'var(--cat-preferences)',
+}
 
 export type Row = {
   id: string; stage: Stage; created_at: string; assessed_at: string | null; score: number | null

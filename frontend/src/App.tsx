@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, box, Field, grid, input, primary, secondary } from './TigFields'
 import TigStaff from './TigStaff'
+import { parseRoute } from './route'
 import TigConfigForm, { cleanConfig } from './TigConfigForm'
 import { emptyRegular, jsonOptions, tigRequest } from './tigTypes'
 import type { Config } from './tigTypes'
@@ -27,16 +28,26 @@ export default function App({ authToken, onLogout }: {
   const [draft, setDraft] = useState(jobDraft)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [view, setView] = useState<'lowongan' | 'lamaran'>(() => window.location.hash === '#lamaran' ? 'lamaran' : 'lowongan')
+  const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   const [config, setConfig] = useState<Config>({ published: false, regular: emptyRegular, program: [] })
   const [createdJob, setCreatedJob] = useState<Job | null>(null)
   const selected = jobs?.find(job => job.id === selectedId)
+  // The detail page belongs to the "Lamaran" section of the sidebar.
+  const view = route.view === 'lowongan' ? 'lowongan' : 'lamaran'
+  const detailJobMissing = route.view === 'detail' && jobs !== null && !jobs.some(job => job.id === route.jobId)
 
   useEffect(() => {
-    const navigate = () => setView(window.location.hash === '#lamaran' ? 'lamaran' : 'lowongan')
+    const navigate = () => {
+      setRoute(parseRoute(window.location.hash))
+      window.scrollTo(0, 0)
+    }
     window.addEventListener('hashchange', navigate)
     return () => window.removeEventListener('hashchange', navigate)
   }, [])
+
+  // A detail link names its job: follow it once the jobs are known (the first job is only the default).
+  // Adjusting state while rendering (guarded, so it settles in one extra pass) avoids an effect round trip.
+  if (route.view === 'detail' && jobs?.some(job => job.id === route.jobId) && selectedId !== route.jobId) setSelectedId(route.jobId)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -88,11 +99,11 @@ export default function App({ authToken, onLogout }: {
     }
   }
 
-  return <Workspace role="Recruiter" title="Rekrutmen" navigation={<>
+  return <Workspace role="Recruiter" title={route.view === 'detail' ? 'Detail skor' : 'Rekrutmen'} navigation={<>
     <a className={'nav-item' + (view === 'lowongan' ? ' active' : '')} aria-current={view === 'lowongan' ? 'page' : undefined} href="#lowongan"><span aria-hidden="true">▦</span> Lowongan</a>
     {selected && <a className={'nav-item' + (view === 'lamaran' ? ' active' : '')} aria-current={view === 'lamaran' ? 'page' : undefined} href="#lamaran"><span aria-hidden="true">≡</span> Lamaran terpilih</a>}
   </>} actions={<button type="button" onClick={onLogout} className={secondary}>Keluar</button>}>
-    <PageHeading eyebrow="RECRUITMENT OVERVIEW" title="Dasbor rekrutmen" description="Kelola lowongan, tinjau lamaran, dan telusuri dasar penilaian dalam satu workspace." />
+    {route.view !== 'detail' && <PageHeading eyebrow="RECRUITMENT OVERVIEW" title="Dasbor rekrutmen" description="Kelola lowongan, tinjau lamaran, dan telusuri dasar penilaian dalam satu workspace." />}
     {view === 'lowongan' && jobs && <dl className="metrics-strip" aria-label="Ringkasan seluruh lowongan">
       <Metric label="Seluruh lowongan" value={jobs.length} description="Lowongan di workspace ini" />
       <Metric label="Lowongan terbuka" value={jobs.filter(job => job.status === 'OPEN').length} description="Status OPEN, seluruh lowongan" />
@@ -101,7 +112,7 @@ export default function App({ authToken, onLogout }: {
 
     {error && <Alert>{error}</Alert>}
     {!jobs && !error && <p role="status">Memuat lowongan…</p>}
-    {jobs && <section id="lowongan" className={box + ' flex flex-wrap items-end gap-3'} aria-label="Lowongan TIG">
+    {jobs && route.view !== 'detail' && <section id="lowongan" className={box + ' flex flex-wrap items-end gap-3'} aria-label="Lowongan TIG">
       <div className="min-w-0 flex-1 basis-56">
         <Field label="Lowongan TIG"><select value={selectedId} className={input} disabled={!jobs.length || busy || editing === 'new'} onChange={event => {
           setSelectedId(event.target.value)
@@ -155,7 +166,13 @@ export default function App({ authToken, onLogout }: {
     </form>}
 
     </div>
-    {selected && (editing === null || view === 'lamaran') && <TigStaff key={selected.id} jobId={selected.id} title={selected.title} token={authToken} view={view} />}
+    {selected && (editing === null || view === 'lamaran') && (route.view !== 'detail' || selected.id === route.jobId) &&
+      <TigStaff key={selected.id} jobId={selected.id} title={selected.title} token={authToken}
+        view={route.view === 'detail' ? 'detail' : view} applicationId={route.view === 'detail' ? route.applicationId : undefined} />}
+    {detailJobMissing && <div className="sd-page">
+      <a className="sd-back" href="#lamaran">← Kembali ke daftar lamaran</a>
+      <Alert>Lowongan untuk lamaran ini tidak ditemukan di workspace Anda.</Alert>
+    </div>}
     {jobs?.length === 0 && !editing && <p className={box + ' text-sm text-slate-600'}>
       Buat lowongan untuk mengatur formulir dan melihat lamaran.
     </p>}

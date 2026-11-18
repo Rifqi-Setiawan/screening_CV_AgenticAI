@@ -1,11 +1,6 @@
 import { categories } from './tigTypes'
-import type { Assessment, AssessmentResult, Category, CategoryResult, EvidenceStatus, HistoryEntry, Trace } from './tigTypes'
-
-const evidenceStyle: Record<EvidenceStatus, [string, string]> = {
-  found: ['bg-emerald-100 text-emerald-900', 'Ada di formulir'],
-  partial: ['bg-amber-100 text-amber-900', 'Sebagian cocok'],
-  not_found: ['bg-rose-100 text-rose-900', 'Tidak ditemukan di formulir'],
-}
+import { evidenceStyle } from './tigApplication'
+import type { Assessment, AssessmentResult, Category, CategoryResult, HistoryEntry, Trace } from './tigTypes'
 
 const attributeLabels: Record<string, string> = {
   BIRTH: 'tempat/tanggal lahir', AGE: 'usia', RELIGION: 'agama', GENDER: 'jenis kelamin', MARITAL: 'status pernikahan',

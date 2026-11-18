@@ -1,25 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Alert, box, Field, input, primary, secondary, sectionTitle } from './TigFields'
+import { Alert, box, Field, input, secondary, sectionTitle } from './TigFields'
 import TigConfigForm, { cleanConfig } from './TigConfigForm'
-import FormSummary from './FormSummary'
-import ScoreExplanation from './TigExplain'
-import { scoreLabel, scoreStyles } from './tigApplication'
+import TigApplicationPage from './TigApplicationPage'
+import { detailHash } from './route'
+import { rowVersion, scoreLabel, scoreStyles } from './tigApplication'
 import type { Detail, ListResponse, Row } from './tigApplication'
-import { emptyRegular, jsonOptions, stages, tigRequest } from './tigTypes'
+import { emptyRegular, jsonOptions, RequestError, tigRequest } from './tigTypes'
 import type { Config } from './tigTypes'
 import { Metric } from './Workspace'
 
 type ConfigResponse = { config: Config; can_edit: boolean; job_status: string }
 
-export default function TigStaff({ jobId, title, token, view }: { jobId: string; title: string; token: string; view: 'lowongan' | 'lamaran' }) {
+export default function TigStaff({ jobId, title, token, view, applicationId }: {
+  jobId: string; title: string; token: string; view: 'lowongan' | 'lamaran' | 'detail'; applicationId?: string
+}) {
   const endpoint = '/api/v1/jobs/' + jobId + '/tig'
   const headers = useMemo(() => ({ Authorization: 'Bearer ' + token }), [token])
   const [settings, setSettings] = useState<ConfigResponse | null>(null)
   const [draft, setDraft] = useState<Config>({ published: false, regular: emptyRegular, program: [] })
   const [applications, setApplications] = useState<ListResponse | null>(null)
   const [detail, setDetail] = useState<Detail | null>(null)
-  const [selection, setSelection] = useState('')
+  const [detailFailure, setDetailFailure] = useState<{ id: string; message: string } | null>(null)
   const [filter, setFilter] = useState<Row['category'] | 'Semua'>('Semua')
   const [sort, setSort] = useState('highest')
   const [busy, setBusy] = useState(false)
@@ -48,16 +50,23 @@ export default function TigStaff({ jobId, title, token, view }: { jobId: string;
     return () => window.clearInterval(interval)
   }, [reload, settings])
 
-  // Reload the detail only when the selected row changes; each detail view is written to the audit log.
+  // Each detail view is written to the audit log: fetch once per opened application and again only when the
+  // list reports a newer version of that row (stage or assessment changed). The detail itself is never polled.
+  const selection = view === 'detail' ? applicationId ?? '' : ''
   const selectedRow = applications?.applications.find(row => row.id === selection)
-  const selectedVersion = selectedRow ? [selectedRow.stage, selectedRow.assessment_status, selectedRow.assessed_at].join('|') : ''
+  const selectedVersion = selectedRow ? rowVersion(selectedRow) : ''
+  const loadedVersion = detail?.id === selection ? rowVersion(detail) : ''
   useEffect(() => {
     if (!selection) return
+    if (loadedVersion && (!selectedVersion || selectedVersion === loadedVersion)) return
     const controller = new AbortController()
     tigRequest<Detail>(endpoint + '/applications/' + selection, { headers, signal: controller.signal })
-      .then(setDetail).catch(error => { if (!controller.signal.aborted) setError(error.message) })
+      .then(setDetail).catch(error => {
+        if (controller.signal.aborted) return
+        setDetailFailure({ id: selection, message: error instanceof RequestError && error.status === 404 ? 'Lamaran tidak ditemukan pada lowongan ini.' : error.message })
+      })
     return () => controller.abort()
-  }, [selectedVersion, endpoint, headers, selection])
+  }, [selection, selectedVersion, loadedVersion, endpoint, headers])
 
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -97,6 +106,17 @@ export default function TigStaff({ jobId, title, token, view }: { jobId: string;
         : b.created_at.localeCompare(a.created_at))
   const applyUrl = window.location.origin + '/apply/' + jobId
   const rows = applications?.applications ?? []
+
+  if (view === 'detail') {
+    const current = detail?.id === selection ? detail : null
+    return <section id="lamaran" className="space-y-5">
+      {error && <Alert>{error}</Alert>}
+      <TigApplicationPage jobTitle={title} applicationId={selection} detail={current} rows={rows} canEdit={Boolean(applications?.can_edit)} busy={busy}
+        error={!current && detailFailure?.id === selection ? detailFailure.message : ''}
+        onStage={stage => void changeApplication('', jsonOptions('PATCH', { stage }, headers))}
+        onRescore={() => void changeApplication('/rescore', { method: 'POST', headers })} />
+    </section>
+  }
 
   return <section id="lamaran" className="space-y-5">
     <header className={box}>
@@ -140,9 +160,8 @@ export default function TigStaff({ jobId, title, token, view }: { jobId: string;
       <div className="overflow-x-auto">
         <table className="w-full min-w-md border-collapse text-left text-sm">
           <thead className="bg-slate-100 text-slate-600"><tr><th className="p-3">Lamaran</th><th className="p-3">Skor</th><th className="p-3">Tahap</th><th className="p-3">Masuk</th></tr></thead>
-          <tbody>{visible.map(row => <tr key={row.id} className={'application-row border-b border-slate-200' + (selection === row.id ? ' selected-row' : '')}>
-            <td className="p-3"><button type="button" aria-pressed={selection === row.id} className="application-link"
-              onClick={() => { setSelection(row.id); if (detail?.id !== row.id) setDetail(null) }}>Lamaran {row.id.slice(0, 8)}</button></td>
+          <tbody>{visible.map(row => <tr key={row.id} className="application-row border-b border-slate-200">
+            <td className="p-3"><a className="application-link" href={detailHash(jobId, row.id)}>Lamaran {row.id.slice(0, 8)}</a></td>
             <td className="p-3"><span className={'rounded-full px-2 py-1 font-medium ' + scoreStyles[row.category]}>{scoreLabel(row)}</span></td>
             <td className="p-3">{row.stage}</td>
             <td className="p-3">{new Date(row.created_at).toLocaleString('id-ID')}</td>
@@ -150,32 +169,6 @@ export default function TigStaff({ jobId, title, token, view }: { jobId: string;
         </table>
       </div>
       {!visible.length && <p className="text-sm text-slate-600">Belum ada lamaran yang cocok dengan filter.</p>}
-    </section>}
-    {view === 'lamaran' && selection && <section className={box + ' space-y-4'} aria-label="Detail lamaran">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className={sectionTitle + ' mb-0'}>Detail lamaran {selection.slice(0, 8)}</h2>
-        <button className={secondary} onClick={() => { setSelection(''); setDetail(null) }}>Tutup detail</button>
-      </div>
-      {detail ? <>
-        <p role="status" className="text-sm font-semibold text-slate-700">{scoreLabel(detail)} · {detail.stage}</p>
-        <div className="candidate-layout">
-          <section className="candidate-form"><h3 className="pane-title">Data formulir yang dikirim pelamar</h3><p className="pane-description">Isian asli pelamar · bukan pratinjau file CV</p><FormSummary form={detail.form} /></section>
-          <section className="candidate-assessment"><h3 className="pane-title">Penilaian & bukti</h3><p className="pane-description">Skor membantu peninjauan, bukan keputusan otomatis.</p>
-        {detail.assessment && <ScoreExplanation result={detail.assessment} assessedAt={detail.assessed_at} history={detail.assessment_history} />}
-        {!detail.assessment && <p className="empty-assessment">{scoreLabel(detail)}. Bukti penilaian tersedia setelah proses selesai.</p>}
-        {!detail.assessment && detail.assessment_history.length > 0 && <p className="text-sm text-slate-600">
-          Skor terakhir sebelum dinilai ulang: {detail.assessment_history[detail.assessment_history.length - 1].assessment.score}/100.</p>}
-          </section>
-        </div>
-        {applications?.can_edit && <div className="flex flex-wrap items-end gap-3">
-          <Field label="Ubah tahap (manual)"><select className={input} value={detail.stage} disabled={busy} onChange={event =>
-            void changeApplication('', jsonOptions('PATCH', { stage: event.target.value }, headers))}>
-            {stages.map(stage => <option key={stage}>{stage}</option>)}
-          </select></Field>
-          <button className={primary} disabled={busy || ['PENDING', 'RUNNING'].includes(detail.assessment_status)}
-            onClick={() => void changeApplication('/rescore', { method: 'POST', headers })}>Nilai ulang dengan AI</button>
-        </div>}
-      </> : <p role="status">Memuat detail…</p>}
     </section>}
   </section>
 }
