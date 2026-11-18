@@ -100,7 +100,7 @@ function ScoreMath({ result, weights }: { result: Assessment; weights: Record<Ca
   </div>
 }
 
-function TraceDetails({ trace, assessedAt }: { trace: Trace; assessedAt: string | null }) {
+export function TraceDetails({ trace, assessedAt }: { trace: Trace; assessedAt: string | null }) {
   const { hidden, attributes, links } = trace.sanitization
   return <>
     <details className="rounded-lg border border-slate-200 p-3">
@@ -121,6 +121,26 @@ function TraceDetails({ trace, assessedAt }: { trace: Trace; assessedAt: string 
   </>
 }
 
+export function OptionsDetails({ options }: { options: Record<string, Assessment> }) {
+  return <details className="rounded-lg border border-slate-200 p-3">
+    <summary className="cursor-pointer font-medium">Penilaian semua opsi posisi</summary>
+    <div className="mt-3 space-y-4">{Object.entries(options).map(([position, option]) =>
+      <div key={position} className="border-t border-slate-200 pt-3"><h3 className="mb-2 font-semibold">{position}</h3><Breakdown result={option} /></div>)}</div>
+  </details>
+}
+
+export function HistoryDetails({ history }: { history: HistoryEntry[] }) {
+  return <details className="rounded-lg border border-slate-200 p-3">
+    <summary className="cursor-pointer font-medium">Riwayat penilaian sebelumnya ({history.length})</summary>
+    <ul className="mt-2 space-y-2 text-sm">{[...history].reverse().map((entry, i) => <li key={i} className="border-t border-slate-200 pt-2">
+      <strong>{entry.assessment.score}/100</strong>
+      {entry.assessed_at && ' · dinilai ' + new Date(entry.assessed_at).toLocaleString('id-ID')}
+      {' · dinilai ulang oleh ' + entry.replaced_by + ' pada ' + new Date(entry.replaced_at).toLocaleString('id-ID')}
+      <p className="text-slate-600">{entry.assessment.summary}</p>
+    </li>)}</ul>
+  </details>
+}
+
 export default function ScoreExplanation({ result, assessedAt, history }: {
   result: AssessmentResult; assessedAt: string | null; history: HistoryEntry[]
 }) {
@@ -130,21 +150,9 @@ export default function ScoreExplanation({ result, assessedAt, history }: {
     {weights && <ScoreMath result={result} weights={weights} />}
     {!weights && result.score_reasoning && <p className="text-sm"><strong>Alasan AI:</strong> {result.score_reasoning}</p>}
     <Breakdown result={result} weights={weights} />
-    {result.options && <details className="rounded-lg border border-slate-200 p-3">
-      <summary className="cursor-pointer font-medium">Penilaian semua opsi posisi</summary>
-      <div className="mt-3 space-y-4">{Object.entries(result.options).map(([position, option]) =>
-        <div key={position} className="border-t border-slate-200 pt-3"><h3 className="mb-2 font-semibold">{position}</h3><Breakdown result={option} /></div>)}</div>
-    </details>}
+    {result.options && <OptionsDetails options={result.options} />}
     {result.trace ? <TraceDetails trace={result.trace} assessedAt={assessedAt} />
       : <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">Penilaian ini dibuat sebelum rincian transparansi tersedia. Nilai ulang untuk melihat data yang dilihat AI dan bukti per kategori.</p>}
-    {history.length > 0 && <details className="rounded-lg border border-slate-200 p-3">
-      <summary className="cursor-pointer font-medium">Riwayat penilaian sebelumnya ({history.length})</summary>
-      <ul className="mt-2 space-y-2 text-sm">{[...history].reverse().map((entry, i) => <li key={i} className="border-t border-slate-200 pt-2">
-        <strong>{entry.assessment.score}/100</strong>
-        {entry.assessed_at && ' · dinilai ' + new Date(entry.assessed_at).toLocaleString('id-ID')}
-        {' · dinilai ulang oleh ' + entry.replaced_by + ' pada ' + new Date(entry.replaced_at).toLocaleString('id-ID')}
-        <p className="text-slate-600">{entry.assessment.summary}</p>
-      </li>)}</ul>
-    </details>}
+    {history.length > 0 && <HistoryDetails history={history} />}
   </div>
 }

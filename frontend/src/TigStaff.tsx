@@ -2,51 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, box, Field, input, primary, secondary, sectionTitle } from './TigFields'
 import TigConfigForm, { cleanConfig } from './TigConfigForm'
+import FormSummary from './FormSummary'
 import ScoreExplanation from './TigExplain'
+import { scoreLabel, scoreStyles } from './tigApplication'
+import type { Detail, ListResponse, Row } from './tigApplication'
 import { emptyRegular, jsonOptions, stages, tigRequest } from './tigTypes'
-import type { Application, AssessmentResult, Config, HistoryEntry, Stage } from './tigTypes'
+import type { Config } from './tigTypes'
 import { Metric } from './Workspace'
 
 type ConfigResponse = { config: Config; can_edit: boolean; job_status: string }
-type Row = {
-  id: string; stage: Stage; created_at: string; assessed_at: string | null; score: number | null
-  category: 'Belum dinilai' | 'Rendah' | 'Sedang' | 'Tinggi'; assessment_status: 'PENDING' | 'RUNNING' | 'FAILED' | 'DONE'
-}
-type ListResponse = { applications: Row[]; can_edit: boolean }
-type Detail = Row & { form: Application; assessment: AssessmentResult | null; assessment_history: HistoryEntry[] }
-
-function scoreLabel(row: Row) {
-  if (row.score !== null) return row.score + ' · ' + row.category
-  if (row.assessment_status === 'FAILED') return 'Gagal dinilai'
-  if (row.assessment_status === 'RUNNING') return 'Sedang dinilai'
-  if (row.assessment_status === 'PENDING') return 'Menunggu penilaian'
-  return 'Belum dinilai'
-}
-
-function FormSummary({ form }: { form: Application }) {
-  return <div className="form-summary space-y-5 text-sm">
-    <p><strong>{form.full_name}</strong> · {form.email}{form.phone && ' · ' + form.phone}</p>
-    {form.education.length > 0 && <div><strong>Pendidikan</strong><ul className="list-disc pl-5">
-      {form.education.map((row, index) => <li key={index}>{[row.level, row.campus, row.major, row.gpa !== null ? 'IPK ' + row.gpa : null].filter(Boolean).join(' · ')}</li>)}
-    </ul></div>}
-    {form.experiences.length > 0 && <div><strong>Pengalaman</strong><ul className="list-disc pl-5">
-      {form.experiences.map((row, index) => <li key={index}>{[row.title, row.organization, [row.start, row.end].filter(Boolean).join('–')].filter(Boolean).join(' · ')}
-        {row.description && <p className="whitespace-pre-wrap text-slate-600">{row.description}</p>}</li>)}
-    </ul></div>}
-    {([['projects', 'Proyek'], ['skills', 'Keahlian'], ['languages', 'Bahasa'], ['certifications', 'Sertifikasi'], ['priority', 'Pilihan pelamar']] as const)
-      .map(([key, label]) => form[key].length > 0 && <p key={key}><strong>{label}</strong> · {form[key].join(', ')}</p>)}
-    <p><strong>Preferensi kerja</strong> · {[
-      form.preferences.domicile, form.preferences.work_modes.join(', '),
-      form.preferences.expected_salary === null ? null : 'Rp ' + form.preferences.expected_salary.toLocaleString('id-ID'),
-      form.preferences.open_to_placement === null ? null : form.preferences.open_to_placement ? 'Bersedia ditempatkan' : 'Tidak bersedia ditempatkan',
-    ].filter(Boolean).join(' · ') || 'Belum diisi'}</p>
-  </div>
-}
-
-const scoreStyles: Record<Row['category'], string> = {
-  Tinggi: 'bg-emerald-100 text-emerald-900', Sedang: 'bg-amber-100 text-amber-900',
-  Rendah: 'bg-rose-100 text-rose-900', 'Belum dinilai': 'bg-slate-100 text-slate-700',
-}
 
 export default function TigStaff({ jobId, title, token, view }: { jobId: string; title: string; token: string; view: 'lowongan' | 'lamaran' }) {
   const endpoint = '/api/v1/jobs/' + jobId + '/tig'
