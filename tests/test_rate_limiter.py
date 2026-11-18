@@ -10,7 +10,7 @@ from src.domain.auth import create_access_token
 from src.domain.models import UserRole
 
 # Create a small standalone test app with the rate limiter dependency
-test_app = FastAPI()
+limiter_app = FastAPI()
 router = APIRouter()
 
 
@@ -19,7 +19,7 @@ async def limited_endpoint():
     return {"status": "ok"}
 
 
-test_app.include_router(router)
+limiter_app.include_router(router)
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +31,7 @@ def reset_limiter():
 
 @pytest.mark.asyncio
 async def test_rate_limiter_blocks_after_n_requests():
-    transport = httpx.ASGITransport(app=test_app)
+    transport = httpx.ASGITransport(app=limiter_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         # Request 1, 2, 3 -> 200
         for _ in range(3):
@@ -46,7 +46,7 @@ async def test_rate_limiter_blocks_after_n_requests():
 
 @pytest.mark.asyncio
 async def test_rate_limiter_resets_after_window():
-    transport = httpx.ASGITransport(app=test_app)
+    transport = httpx.ASGITransport(app=limiter_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         for _ in range(3):
             r = await ac.get("/test-limited")
@@ -64,7 +64,7 @@ async def test_rate_limiter_resets_after_window():
 
 @pytest.mark.asyncio
 async def test_rate_limiter_two_users_isolated():
-    transport = httpx.ASGITransport(app=test_app)
+    transport = httpx.ASGITransport(app=limiter_app)
     user_1_token = create_access_token(
         {
             "sub": str(uuid.uuid4()),

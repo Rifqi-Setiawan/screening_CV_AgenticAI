@@ -7,8 +7,6 @@ import contextlib
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import psycopg
-from pgvector.psycopg import register_vector_async
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -46,14 +44,10 @@ async def get_db_pool() -> AsyncConnectionPool:
             _pool_loop = current_loop
             logger.info("Initializing async database connection pool...")
 
-            async def configure(conn: psycopg.AsyncConnection) -> None:
-                await register_vector_async(conn)
-
             _pool = AsyncConnectionPool(
                 conninfo=settings.DATABASE_URL,
                 min_size=settings.DB_POOL_MIN,
                 max_size=settings.DB_POOL_MAX,
-                configure=configure,
                 open=False,
             )
             await _pool.open()
@@ -75,17 +69,11 @@ async def close_db_pool() -> None:
 
 @contextlib.asynccontextmanager
 async def get_connection() -> AsyncGenerator[Any, None]:
+    # Only the pool is recreated; errors raised by the caller's body propagate unchanged.
     pool = await get_db_pool()
-    try:
-        async with pool.connection() as conn:
-            conn.row_factory = dict_row  # type: ignore[assignment]
-            yield conn
-    except Exception as e:
-        if "closed" in str(e).lower() or "pool" in str(e).lower():
-            await close_db_pool()
-            pool = await get_db_pool()
-            async with pool.connection() as conn:
-                conn.row_factory = dict_row  # type: ignore[assignment]
-                yield conn
-        else:
-            raise
+    if pool.closed:
+        await close_db_pool()
+        pool = await get_db_pool()
+    async with pool.connection() as conn:
+        conn.row_factory = dict_row  # type: ignore[assignment]
+        yield conn

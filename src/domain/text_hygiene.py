@@ -1,8 +1,4 @@
-"""Text hygiene for untrusted CV content: invisible characters, homoglyphs and injection phrases (v2.2).
-
-Applies to text that will reach an LLM. It never edits the stored CV text; callers use the cleaned copy
-only at the LLM boundary and use the flags for audit and Critic routing.
-"""
+"""Screen untrusted application form text for prompt injection."""
 
 from __future__ import annotations
 
@@ -11,8 +7,6 @@ import unicodedata
 
 # Zero-width, bidi-control, invisible formatting and tag characters.
 _INVISIBLE = re.compile("[​-‏‪-‮⁠-⁤⁦-⁩﻿­᠎\U000e0000-\U000e007f]")
-_BIDI = re.compile("[‎‏‪-‮⁦-⁩]")
-_WORD = re.compile(r"\w+", re.UNICODE)
 
 # Prompt-injection phrases (Indonesian + English) and chat-template markers.
 _INJECTION: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
@@ -31,13 +25,18 @@ _INJECTION: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
             r"(?:abaikan|lupakan|kesampingkan)\s+(?:semua\s+|seluruh\s+)?(?:instruksi|perintah|aturan|kriteria|petunjuk)",
         ),
         (
+            # Requires a candidate/score object so that "give 100% effort" is not flagged.
             "SCORE_MAX_EN",
-            r"(?:give|assign|rate|score)\s+(?:this\s+)?(?:candidate|applicant|resume|cv)?\s*(?:a\s+)?(?:score\s+of\s+|as\s+)?(?:100|10/10|perfect|maximum|highest)",
+            r"\b(?:give|assign|rate|score)\s+(?:this|the)\s+(?:candidate|applicant|resume|cv)\s+(?:a\s+)?"
+            r"(?:score\s+(?:of\s+)?|as\s+)?(?:100|10/10|perfect|maximum|highest)\b"
+            r"|\b(?:give|assign)\s+(?:me\s+|it\s+)?(?:a\s+)?(?:score|rating)\s+(?:of\s+)?(?:100|10/10|perfect|maximum|highest)\b",
         ),
         ("SCORE_MAX_ID", r"(?:beri(?:kan)?|berikan|tetapkan)\s+(?:nilai|skor)\s+(?:100|sempurna|maksimal|tertinggi)"),
         (
+            # "Hire candidates for engineering teams" is ordinary recruiter work, so a demonstrative is required.
             "RECOMMEND_EN",
-            r"(?:strongly\s+)?(?:recommend|shortlist|hire|select|rank\s+first)\s+(?:this\s+)?(?:candidate|applicant)",
+            r"\b(?:strongly\s+)?(?:recommend|shortlist|hire|select|rank\s+first)\s+(?:this|the\s+following)\s+"
+            r"(?:candidate|applicant)\b",
         ),
         (
             "RECOMMEND_ID",
@@ -48,7 +47,12 @@ _INJECTION: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
             "SYSTEM_MARKER",
             r"(?:^|\n)\s*(?:system\s*prompt|system\s*:|\[system\]|<\|im_start\|>|<\|system\|>|###\s*instruction)",
         ),
-        ("MODE_SWITCH", r"(?:evaluation\s+override\s+mode|developer\s+mode|dan\s+mode|jailbreak)"),
+        # "dan mode" is not matched: "dan" is the Indonesian word for "and" ("tren fashion dan mode").
+        (
+            "MODE_SWITCH",
+            r"evaluation\s+override\s+mode|\b(?:enable|enter|activate|switch\s+to)\s+(?:developer|god|admin)\s+mode\b"
+            r"|\bjailbreak\s+(?:mode|prompt|the\s+(?:model|ai|assistant))\b",
+        ),
         (
             "OUTPUT_FORCE",
             r"(?:output|respond|answer|jawab)\s+(?:only|hanya|exactly|persis)\s+(?:with\s+)?[\"'{\[]?\s*(?:entailed|strong|shortlist|band\s*a)",
@@ -56,18 +60,6 @@ _INJECTION: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("UNCONDITIONAL", r"unconditional\s+acceptance|terima\s+tanpa\s+syarat"),
     )
 )
-
-_SCRIPT_OF = {"LATIN": "L", "CYRILLIC": "C", "GREEK": "G"}
-
-
-def _script(ch: str) -> str | None:
-    if not ch.isalpha():
-        return None
-    name = unicodedata.name(ch, "")
-    for prefix, code in _SCRIPT_OF.items():
-        if name.startswith(prefix):
-            return code
-    return None
 
 
 def neutralize_control_chars(text: str) -> str:
@@ -77,35 +69,7 @@ def neutralize_control_chars(text: str) -> str:
     return unicodedata.normalize("NFKC", _INVISIBLE.sub("", text))
 
 
-def find_homoglyph_words(text: str, limit: int = 5) -> list[str]:
-    """Words mixing Latin letters with Cyrillic/Greek lookalikes (e.g. 'Pythоn'), a stuffing/evasion trick."""
-    found: list[str] = []
-    for word in _WORD.findall(text or ""):
-        scripts = {_script(c) for c in word} - {None}
-        if "L" in scripts and scripts & {"C", "G"}:
-            found.append(word)
-            if len(found) >= limit:
-                break
-    return found
-
-
 def scan_injection(text: str) -> list[str]:
     """Names of injection patterns found in `text` (after removing invisible characters)."""
     cleaned = neutralize_control_chars(text or "")
     return sorted({name for name, pat in _INJECTION if pat.search(cleaned)})
-
-
-def hygiene_flags(text: str) -> list[str]:
-    """Audit flags for a document text: invisible characters, bidi controls, homoglyphs, injection phrases."""
-    flags: list[str] = []
-    if not text:
-        return flags
-    if _INVISIBLE.search(text):
-        flags.append("INVISIBLE_CHARS")
-    if _BIDI.search(text):
-        flags.append("BIDI_CONTROL")
-    if find_homoglyph_words(text, limit=1):
-        flags.append("HOMOGLYPH_MIX")
-    if scan_injection(text):
-        flags.append("PROMPT_INJECTION")
-    return flags

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     APP_ENV: str = "production"
-    APP_PORT: int = 8110
+    APP_PORT: int = 8111
     APP_HOST: str = "127.0.0.1"
 
     # Database
@@ -29,71 +29,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
-    # Storage
-    STORAGE_VAULT_PATH: str = "/srv/hermes-control/services/cv-screening/data/cv-vault"
     MAX_UPLOAD_SIZE_MB: int = 10
 
-    # LLM Data Policy
-    # 'redacted_dev_router' enables 9Router for development with automated PII pre-flight verification
-    # 'paid_or_local_only' disables unmetered dev router and restricts calls to official metered APIs / local models
     LLM_DATA_POLICY: str = "redacted_dev_router"
     LLM_GATEWAY_URL: str = "http://127.0.0.1:20128/v1"
     LLM_GATEWAY_KEY: str = ""
-    LLM_MODEL_JD_COMPILER: str = "ag/gemini-3.8-flash"
-    LLM_MODEL_VERIFIER: str = "ag/gemini-3.8-flash"
-    LLM_MODEL_PROFILER: str = "ag/gemini-3.8-flash"
     LLM_MODEL_MATCHER: str = "ag/gemini-3.8-flash"
-    LLM_MODEL_CRITIC: str = "cc/claude-sonnet-5-5"
     LLM_TEMPERATURE: float = 0.0
-    VERIFIER_CONCURRENCY: int = 5
-
-    # Graph B throughput (v2.2)
-    LLM_MAX_CONCURRENCY: int = 8  # global in-flight LLM requests across all agents
-    SCREENING_CANDIDATE_CONCURRENCY: int = 4  # candidates evaluated in parallel per run
-    FACET_NARROWING_ENABLED: bool = True  # judge only the facets a requirement is actually about
-    SCRUB_PROTECTED_ATTRIBUTES: bool = True  # hide religion/gender/age/marital/address statements from the LLM
-    MATCHER_EXCLUDED_ATOM_KINDS: list[str] = ["education"]  # campus/graduation year are prestige and age proxies
-    REQUIRE_VERIFIED_SPANS: bool = True  # atoms whose span cannot be located in the CV are not used as evidence
-    MATCHER_RETRIEVAL_TOP_K: int = 0  # >0: send the Matcher only the top-K atoms per facet (0 = all atoms)
-
-    # Critic routing (v2.2)
-    # The L0..L4 depth rubric multiplies each requirement score (L2 = 0.7 ...). In v2.1 the full pipeline passed
-    # enum members, which the scorer did not recognise, so depth was silently ignored and scores were
-    # state-only (an all-L2 candidate scored 100). The behaviour is now explicit; switching it on rescales every
-    # score, so decide it with evaluation data (see docs/eval).
-    SCORER_DEPTH_FACTORS_ENABLED: bool = False
-    DOMAIN_INFERENCE_ENABLED: bool = True  # lift unproven facets to PARTIAL/L1 from transaction-system context
-    CRITIC_TOP_K: int = 5  # always audit candidates ranked inside the provisional top-K shortlist
-    CRITIC_RANDOM_AUDIT_RATE: float = 0.05  # unconditional random audit sample for false-negative measurement
-    CRITIC_BORDER_MARGIN: float = 3.0  # +- points around a band boundary
-    AGENT_DISAGREEMENT_FORCES_BAND_R: bool = False  # v2.1 behaviour was True
-
-    # Eligibility Gate
-    ELIGIBILITY_FOUR_EYES: bool = True
-    ALLOW_RELIGION_CRITERIA: bool = True
-    ALLOW_GENDER_CRITERIA: bool = True
-    ALLOW_AGE_CRITERIA: bool = True
-
-    # Taxonomy & Domain Configuration
-    TAXONOMY_DIR: str = "config/taxonomy"
-
-    # Hybrid Retrieval & Scoring Mode (FX-32)
-    SCORING_MODE: str = "rules"  # "rules" | "hybrid"
-    SEMANTIC_THRESHOLD: float = 0.65
-
-    # System Versions (FX-40)
-    EXTRACTOR_VERSION: str = "1.0.0"
-    SCORING_VERSION: str = "2.0.0"
-
-    # Embedding
-    EMBEDDING_MODEL: str = "microsoft/harrier-oss-v1-270m"
-    EMBEDDING_DIM: int = 640
+    LLM_MAX_CONCURRENCY: int = 8
 
     # CORS
     CORS_ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://screening.rifqisetiawan.my.id",
+        "https://agentic-screening.rifqisetiawan.my.id",
     ]
 
     # Metrics

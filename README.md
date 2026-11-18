@@ -1,55 +1,24 @@
-# High-Precision Agentic AI CV Screening & Candidate Ranking Platform (v2.1)
+# Rekrutmen TIG
 
-A next-generation CV screening and candidate ranking engine designed to evaluate candidate qualifications through context-aware asymmetric reasoning, temporal calendar union, and multi-agent verification.
+Aplikasi untuk mengelola lowongan, menerima lamaran, dan membantu staf rekrutmen menilai kecocokan pelamar.
 
-## Core Advancements (over v1.0)
+1. Staf membuat lowongan. Admin mengatur kriteria dan membuka formulir untuk pelamar.
+2. Pelamar memakai link publik tanpa akun. CV PDF atau Word bersifat opsional. Teks CV membantu mengisi formulir, lalu pelamar bisa mengoreksi isian sebelum mengirim.
+3. Worker meminta gateway model menilai data formulir yang relevan. Formulir disimpan terenkripsi. Nama, kontak, dan atribut demografis tidak digunakan untuk penilaian.
+4. Staf melihat skor dan penjelasan, lalu menentukan tahap secara manual.
 
-1. **Contextual & Directional Entailment (Title-vs-Context):**
-   - Breaks job requirements down into discrete evaluable facets.
-   - Evaluates whether candidate work activities logically entail target qualifications rather than relying on rigid title string matching.
-2. **Deterministic Temporal Engine (Fragmented Duration Accumulator):**
-   - Implements sweep-line Weighted Calendar Union per domain to accurately accumulate concurrent, part-time, and fragmented career tenures without double-counting.
-3. **Evidence Atomization & Zero-Hallucination Grounding:**
-   - Deconstructs resumes into immutable evidence atoms with exact original character offsets and page coordinates.
-   - Eliminates citation hallucinations by construction.
-4. **Adversarial Multi-Agent Verification:**
-   - Profiler and Matcher agents extract and match evidence against taxonomy facets.
-   - Critic agent (employing an independent model family) scrutinizes borderline scores, keyword-stuffing anomalies, and contradictions.
-5. **Human-in-the-Loop & PDP Compliance (UU No. 27/2022):**
-   - Strictly zero auto-rejections; automated workflows provide auditable recommendations while preserving final decision authority for human recruiters.
+## Menjalankan
 
-## Architecture
+Gunakan Python 3.12, Node.js yang mendukung Vite 8, PostgreSQL dengan ekstensi vector untuk riwayat migrasi, dan gateway model yang kompatibel dengan API OpenAI. Pasang antiword jika perlu membaca Word .doc lama.
 
-- **Backend:** Python 3.12, FastAPI, PostgreSQL 16 with pgvector 0.8.7 (Harrier-270m 640d)
-- **AI Gateway:** 9Router OpenAI-compatible endpoint (`http://127.0.0.1:20128/v1`)
-  - Profiler & Matcher: `ag/gemini-3.8-flash-high`
-  - Critic / Verifier: `cc/claude-sonnet-5-5`
-- **Frontend:** React SPA (Vite, TypeScript, Tailwind CSS)
-- **Specification:** See `docs/BLUEPRINT_v2.1_AGENTIC_CV_SCREENING.md`
+Salin .env.example ke .env, isi koneksi database, kunci, dan konfigurasi gateway model, lalu jalankan:
 
-## Getting Started
+    python -m venv .venv
+    .venv/bin/pip install -e ".[dev]"
+    make migrate
+    cd frontend && npm ci && npm run build && cd ..
+    make run-api
 
-### 1. Environment Setup
-```bash
-# Initialize virtualenv
-uv venv .venv --python 3.12
-source .venv/bin/activate
+Jalankan make run-worker di proses terpisah. Dasbor staf tersedia di /app pada port 8111. Dasbor memerlukan akun staf yang aktif. Admin dapat membagikan link formulir dari halaman lowongan.
 
-# Install dependencies
-uv pip install -r requirements.lock
-uv pip install alembic torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu sentence-transformers transformers
-```
-
-### 2. Configuration & Migrations
-```bash
-cp .env.example .env
-# Edit .env with your PostgreSQL credentials and 9Router gateway key
-
-# Run database migrations
-.venv/bin/alembic upgrade head
-```
-
-### 3. Run Tests
-```bash
-.venv/bin/pytest tests/
-```
+Untuk tes, isi TEST_DATABASE_URL dengan database terisolasi yang namanya berakhiran _test, lalu jalankan make test.

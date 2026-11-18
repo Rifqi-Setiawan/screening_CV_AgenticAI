@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from fastapi import HTTPException, Request, status
 
-from src.domain.auth import decode_access_token
+from src.domain.auth import decode_access_token, decode_applicant_token
 
 _request_history: dict[str, list[float]] = defaultdict(list)
 _total_requests_counter = 0
@@ -49,6 +49,9 @@ def check_rate_limit(max_requests: int = 60, window_seconds: int = 60):
             token_data = decode_access_token(token)
             if token_data and token_data.user_id:
                 user_id = token_data.user_id
+            elif applicant_id := decode_applicant_token(token):
+                # Applicants behind one proxy share an IP; key signed-in applicants by account instead.
+                user_id = "applicant:" + applicant_id
 
         route_obj = request.scope.get("route")
         route_path = getattr(route_obj, "path", None) or request.url.path

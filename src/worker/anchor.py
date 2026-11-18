@@ -1,12 +1,8 @@
-"""Orthogonal Anchor Consensus Engine: eliminates Headline Bias, Institutional Headers,
-and Narrative Openings by cross-referencing candidate names against email slugs,
-LinkedIn URLs, and filename stems.
-"""
+"""Prefill candidate names from CV headers and email when available."""
 
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 # Blacklist of job titles, roles, and professional headlines
 ROLE_HEADLINE_PATTERNS = [
@@ -64,52 +60,6 @@ def is_blacklisted_as_name(text: str) -> bool:
     return bool(text.strip().endswith("."))
 
 
-def extract_filename_anchor(filename: str) -> str | None:
-    """Extracts high-confidence applicant name from ATS standard naming '[ID]_[Name]_[Original]' or 'CV_[Name]'."""
-    stem = Path(filename).stem
-    # 1. Pattern: 1234_Name_Original.pdf
-    parts = stem.split("_")
-    if len(parts) >= 2 and parts[0].strip().isdigit():
-        cand = clean_raw_name_string(parts[1].strip())
-        if 1 <= len(cand.split()) <= 4 and len(cand) >= 3 and not is_blacklisted_as_name(cand):
-            return cand.title()
-
-    # 2. Pattern: Name-resume.pdf or CV_Name.pdf
-    stop_words = {
-        "cv",
-        "resume",
-        "curriculum",
-        "vitae",
-        "pdf",
-        "docx",
-        "doc",
-        "merged",
-        "final",
-        "new",
-        "update",
-        "ats",
-        "2024",
-        "2025",
-        "2026",
-        "id",
-        "en",
-        "lamaran",
-        "surat",
-        "pekerjaan",
-        "page",
-        "pages",
-        "draft",
-        "profile",
-    }
-    clean_stem = re.sub(r"[_\-\.]+", " ", stem)
-    tokens = [t.strip() for t in clean_stem.split() if t.strip().lower() not in stop_words and not t.strip().isdigit()]
-    if 2 <= len(tokens) <= 4:
-        cand = " ".join(tokens).title()
-        if not is_blacklisted_as_name(cand):
-            return cand
-    return None
-
-
 def extract_email_name_tokens(email: str | None) -> list[str]:
     """Extracts candidate name components from email local-part."""
     if not email or "@" not in email:
@@ -125,15 +75,9 @@ def extract_email_name_tokens(email: str | None) -> list[str]:
 def resolve_candidate_name_consensus(
     extracted_name: str | None,
     full_text: str,
-    filename: str,
     email: str | None = None,
-    linkedin: str | None = None,
 ) -> str:
-    """Triangulates 5 signals to establish the authoritative candidate name with consensus."""
-    # Check High-Confidence Filename Anchor (e.g. ATS export "3554_Yadi Apriyadi_...")
-    fn_cand = extract_filename_anchor(filename)
-
-    # 1. Clean extracted name candidate
+    """Prefer a plausible CV header, then look for a name in the document or email."""
     name_candidate = clean_raw_name_string(extracted_name or "")
 
     # If extracted name is valid and NOT blacklisted, check its quality
@@ -146,21 +90,7 @@ def resolve_candidate_name_consensus(
                 name_candidate = longest
         name_candidate = re.sub(r"\s+", " ", name_candidate)
 
-        # If high-confidence ATS filename anchor exists, prefer it if it's more complete
-        if fn_cand:
-            fn_lower = fn_cand.lower()
-            cand_lower = name_candidate.lower()
-            cand_words = [w for w in cand_lower.split() if len(w) > 1]
-            if any(w in fn_lower for w in cand_words) or (
-                len(fn_cand.split()) >= len(name_candidate.split()) and len(name_candidate.split()) <= 2
-            ):
-                return fn_cand
-
         return name_candidate
-
-    # 2. Check High-Confidence Filename Anchor
-    if fn_cand:
-        return fn_cand
 
     # 3. Check Cover Letter self-intro: e.g. "Saya, Pijar Sulthan Muhammad" or "I am, ..."
     m_intro = re.search(
@@ -190,4 +120,4 @@ def resolve_candidate_name_consensus(
     if len(email_tokens) >= 2:
         return " ".join(email_tokens[:3]).title()
 
-    return name_candidate or "Kandidat"
+    return ""

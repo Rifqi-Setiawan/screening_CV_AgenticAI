@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
+from src.api.dependencies import get_current_user, is_demo_staff
+from src.api.middleware.rate_limiter import check_rate_limit
 from src.domain.auth import create_access_token, verify_password
 from src.domain.models import TokenResponse, User, UserRole
 from src.infrastructure.database import get_connection
@@ -17,7 +19,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(check_rate_limit(12))])
 async def login(req: LoginRequest) -> TokenResponse:
     async with get_connection() as conn:
         cur = conn.cursor()
@@ -27,7 +29,7 @@ async def login(req: LoginRequest) -> TokenResponse:
         )
         user_row = await cur.fetchone()
 
-        if not user_row:
+        if not user_row or is_demo_staff(user_row["email"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
@@ -72,3 +74,8 @@ async def login(req: LoginRequest) -> TokenResponse:
         await conn.commit()
 
         return TokenResponse(access_token=token, token_type="bearer", user=user)
+
+
+@router.get("/me", response_model=User)
+async def me(user: User = Depends(get_current_user)) -> User:
+    return user

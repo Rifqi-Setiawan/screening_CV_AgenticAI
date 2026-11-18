@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class UserRole(str, Enum):
-    ADMIN = "admin"
+    # MVP: recruiters are the only staff role. Applicants have separate accounts (src/api/routes/applicant.py).
     RECRUITER = "recruiter"
-    HIRING_MANAGER = "hiring_manager"
 
 
 class User(BaseModel):
@@ -22,10 +22,6 @@ class User(BaseModel):
     role: UserRole
     is_active: bool = True
     created_at: datetime
-
-
-class UserInDB(User):
-    password_hash: str
 
 
 class TokenData(BaseModel):
@@ -45,34 +41,36 @@ class HealthResponse(BaseModel):
     status: str
     app_env: str
     database: str
-    pgvector_version: str | None
     active_services: list[str] = Field(default_factory=list)
     timestamp: datetime
 
 
+JobTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
+JobLocation = Annotated[str, StringConstraints(strip_whitespace=True, max_length=220)]
+EmploymentType = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
+
+
 class JobCreate(BaseModel):
-    title: str
-    jd_text: str
-    location: str | None = None
-    employment_type: str | None = None
-    external_ref: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    title: JobTitle
+    location: JobLocation | None = None
+    employment_type: EmploymentType | None = None
 
 
 class JobUpdate(BaseModel):
-    title: str | None = None
-    location: str | None = None
-    employment_type: str | None = None
-    status: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    title: JobTitle | None = None
+    location: JobLocation | None = None
+    employment_type: EmploymentType | None = None
 
 
 class JobResponse(BaseModel):
     id: UUID
-    tenant_id: UUID
     title: str
-    status: str
-    location: str | None = None
-    employment_type: str | None = None
-    external_ref: str | None = None
-    jd_text: str | None = None
+    status: Literal["DRAFT", "OPEN", "CLOSED"]
+    location: str | None
+    employment_type: str | None
     created_at: datetime
-    cv_count: int = 0
+    application_count: int

@@ -1,8 +1,7 @@
-"""FastAPI request dependencies, security gates, and RBAC enforcement."""
+"""FastAPI request dependencies for recruiter sessions and tenant scoping."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -13,6 +12,17 @@ from src.domain.models import TokenData, User, UserRole
 from src.infrastructure.database import get_connection
 
 security = HTTPBearer(auto_error=False)
+
+# These seeded identities used public credentials in the legacy frontend.
+DEMO_STAFF = {
+    "admin@rifqisetiawan.my.id",
+    "recruiter@rifqisetiawan.my.id",
+    "manager@rifqisetiawan.my.id",
+}
+
+
+def is_demo_staff(email: str) -> bool:
+    return email.casefold() in DEMO_STAFF
 
 
 async def get_current_user(
@@ -44,6 +54,8 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User account inactive or not found",
             )
+        if is_demo_staff(row["email"]):
+            raise HTTPException(403, "Gunakan akun staf khusus TIG.")
         user = User(
             id=row["id"],
             tenant_id=row["tenant_id"],
@@ -55,25 +67,16 @@ async def get_current_user(
     return user
 
 
-async def get_job_for_tenant(cur, job_id: Any, tenant_id: Any) -> dict[str, Any]:
+async def get_job_for_tenant(cur, job_id: Any, tenant_id: Any, *, lock: bool = False) -> dict[str, Any]:
     """Helper to verify job belongs to the authenticated tenant. Returns 404 if not found."""
-    await cur.execute(
-        "SELECT * FROM jobs WHERE id = %s AND tenant_id = %s",
-        (job_id, tenant_id),
-    )
+    sql = """
+        SELECT j.id, j.status, c.config FROM jobs j JOIN tig_configs c ON c.job_id = j.id
+        WHERE j.id = %s AND j.tenant_id = %s
+    """
+    if lock:
+        sql += " FOR UPDATE OF j"
+    await cur.execute(sql, (job_id, tenant_id))
     job = await cur.fetchone()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job tidak ditemukan")
     return job
-
-
-def require_role(allowed_roles: list[UserRole]) -> Callable:
-    async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access forbidden: requires one of {[r.value for r in allowed_roles]} roles",
-            )
-        return current_user
-
-    return role_checker

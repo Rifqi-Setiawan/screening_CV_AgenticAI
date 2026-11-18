@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 from pydantic import ValidationError
 
@@ -69,7 +71,7 @@ def test_conftest_guard_blocks_production_database():
     import subprocess
 
     res = subprocess.run(
-        [".venv/bin/pytest", "tests/test_health.py"],
+        [sys.executable, "-m", "pytest", "tests/test_health.py"],
         env={**os.environ, "TEST_DATABASE_URL": "postgresql://cv_screening_user:pass@127.0.0.1:5432/cv_screening"},
         capture_output=True,
         text=True,

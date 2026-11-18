@@ -31,11 +31,6 @@ def resolve_router_key() -> str:
     return key.strip()
 
 
-def reset_key_cache() -> None:
-    """Compatibility reset helper."""
-    pass
-
-
 def parse_llm_json(content_str: str) -> dict[str, Any] | list[Any] | None:
     """Robust JSON parser handling raw text, markdown blocks, and outer braces."""
     if not content_str:
@@ -130,7 +125,7 @@ class ModelGateway:
     async def call_chat(
         self,
         messages: list[dict[str, str]],
-        task: str = "jd_compilation",
+        task: str = "tig_assessment",
         tenant_id: uuid.UUID | None = None,
         json_mode: bool = True,
         model: str | None = None,
@@ -147,15 +142,7 @@ class ModelGateway:
         self.verify_redacted_text(combined_prompt)
 
         api_key = resolve_router_key()
-        if model is None:
-            if task in ("profiler", "profiling"):
-                model = settings.LLM_MODEL_PROFILER
-            elif task == "critic":
-                model = settings.LLM_MODEL_CRITIC
-            elif task == "verification":
-                model = settings.LLM_MODEL_VERIFIER
-            else:
-                model = settings.LLM_MODEL_JD_COMPILER
+        model = model or settings.LLM_MODEL_MATCHER
 
         input_hash = hashlib.sha256(combined_prompt.encode()).hexdigest()
         t0 = time.time()
@@ -249,7 +236,7 @@ class ModelGateway:
                     return {"raw_content": content_str}
 
                 else:
-                    logger.warning(f"9Router returned HTTP {res.status_code}: {res.text[:200]}")
+                    logger.warning("9Router returned HTTP %s", res.status_code)
                     return None
 
             except (httpx.ConnectError, httpx.TimeoutException) as e:

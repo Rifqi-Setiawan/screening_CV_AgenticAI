@@ -1,6 +1,6 @@
-"""Tests for health check and operational endpoints."""
+"""Public health and route checks for the TIG-only API."""
 
-from __future__ import annotations
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -14,25 +14,26 @@ async def test_health_check_public(client: httpx.AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_health_check_admin_authorized(client: httpx.AsyncClient, admin_token: str):
-    response = await client.get("/api/v1/admin/health", headers={"Authorization": f"Bearer {admin_token}"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "UP"
-    assert data["database"] == "HEALTHY"
-    assert data["pgvector_version"] is not None
-    assert data["pgvector_version"].startswith("0.8")
-
-
-@pytest.mark.asyncio
-async def test_health_check_admin_unauthorized(client: httpx.AsyncClient, recruiter_token: str):
-    response = await client.get("/api/v1/admin/health", headers={"Authorization": f"Bearer {recruiter_token}"})
-    assert response.status_code == 403
+async def test_admin_health_requires_login(client: httpx.AsyncClient):
+    response = await client.get("/api/v1/admin/health")
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_root_endpoint(client: httpx.AsyncClient):
     response = await client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ONLINE"
+    assert response.json()["service"] == "Rekrutmen TIG"
+
+
+@pytest.mark.asyncio
+async def test_removed_workflow_routes_return_not_found(client: httpx.AsyncClient):
+    job = "/api/v1/jobs/" + str(uuid4())
+    for path in (
+        job + "/requirements",
+        job + "/cvs/status",
+        job + "/screenings/latest",
+        job + "/eligibility-rules",
+        "/audit-files/old.pdf",
+    ):
+        assert (await client.get(path)).status_code == 404

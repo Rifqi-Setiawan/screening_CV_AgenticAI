@@ -37,7 +37,7 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
 
     try:
         from pathlib import Path
-        log_dir = Path("/srv/hermes-control/services/cv-screening-agentic/logs")
+        log_dir = Path(__file__).resolve().parents[2] / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(str(log_dir / "app.log"), encoding="utf-8")
         file_handler.setFormatter(formatter)
