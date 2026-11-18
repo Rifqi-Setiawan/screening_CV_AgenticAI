@@ -8,5 +8,5 @@
     "rootDir": "src",
     "types": []
   },
-  "include": ["src/route.ts", "src/scoreView.ts", "src/intakeRules.ts", "src/profile.ts"]
+  "include": ["src/route.ts", "src/scoreView.ts", "src/intakeRules.ts", "src/profile.ts", "src/prefillMerge.ts"]
 }

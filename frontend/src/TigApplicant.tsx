@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Account } from './ApplicantPortal'
-import { blankEducation, blankExperience, intakeProblems, normalizeEnd, shownEnd } from './intakeRules'
+import { blankEducation, blankExperience, intakeProblems, normalizeEnd } from './intakeRules'
+import { mergePrefill } from './prefillMerge'
 import { Alert, box, CampusSuggestions, cleanLines, Field, grid, input, Lines, NumberField, Options, primary, secondary, sectionTitle } from './TigFields'
 import { degrees, emptyApplication, jsonOptions, modes, RequestError, tigRequest } from './tigTypes'
 import type { Application, Education, Experience } from './tigTypes'
 
 type Job = { title: string; location: string | null; options: string[] }
-
-const listFields = [
-  ['education', 'pendidikan'], ['experiences', 'pengalaman'], ['projects', 'proyek'], ['skills', 'keahlian'],
-  ['languages', 'bahasa'], ['certifications', 'sertifikasi'],
-] as const
 
 const blankRow = (): Education => ({ level: null, campus: '', major: '', gpa: null })
 
@@ -59,13 +55,6 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
   const experience = (index: number, updateRow: Partial<Experience>) => update('experiences',
     form.experiences.map((row, i) => i === index ? { ...row, ...updateRow } : row))
 
-  // A field counts as empty when it only holds blank rows, so the single empty education row does not block prefill.
-  function isEmpty(field: typeof listFields[number][0]) {
-    if (field === 'education') return form.education.every(blankEducation)
-    if (field === 'experiences') return form.experiences.every(blankExperience)
-    return form[field].every(value => !value.trim())
-  }
-
   async function prefill(file: File) {
     setError('')
     setNotice('')
@@ -74,28 +63,7 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
     body.append('file', file)
     try {
       const result = await tigRequest<{ form: Partial<Application>; notice: string }>(endpoint + '/prefill', { method: 'POST', body, headers: auth })
-      // Only empty fields are filled, so anything the applicant already typed is kept.
-      const changes: string[] = []
-      const next = { ...form }
-      for (const [field, label] of [['full_name', 'nama'], ['email', 'email'], ['phone', 'telepon']] as const) {
-        if (!form[field] && result.form[field]) {
-          next[field] = result.form[field]
-          changes.push(label)
-        }
-      }
-      for (const [field, label] of listFields) {
-        const values = result.form[field]
-        if (isEmpty(field) && values?.length) {
-          const shown = field === 'experiences' ? (values as Experience[]).map(row => ({ ...row, end: shownEnd(row.end) })) : values
-          Object.assign(next, { [field]: shown })
-          changes.push(label + ' (' + values.length + ')')
-        }
-      }
-      if (!form.preferences.domicile && result.form.preferences?.domicile) {
-        next.preferences = { ...form.preferences, domicile: result.form.preferences.domicile }
-        changes.push('domisili')
-      }
-      if (!next.education.length) next.education = [blankRow()]
+      const { next, changes } = mergePrefill(form, result.form)
       setForm(next)
       setFilled(changes)
       setNotice(result.notice)

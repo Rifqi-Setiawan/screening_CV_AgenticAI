@@ -1,5 +1,5 @@
 import { blankEducation, blankExperience } from './intakeRules.ts'
-import type { Education, Experience } from './tigTypes.ts'
+import type { Application, Education, Experience } from './tigTypes.ts'
 
 // Headline facts for the recruiter's profile card, derived from the applicant's own form rows.
 
@@ -25,4 +25,16 @@ export function latestExperience(rows: Experience[]): Experience | null {
   let best = listed[0]
   for (const row of listed) if (row.end.trim() > best.end.trim()) best = row
   return best
+}
+
+export type SummaryList = { label: string; items: string[]; layout: 'bullets' | 'inline' }
+
+/** Lists shown under the applicant's form. Entries that are sentences (projects, certificates) get a bullet each, because a comma
+ *  between two long entries that themselves contain commas cannot be read. */
+export function summaryLists(form: Pick<Application, 'projects' | 'skills' | 'languages' | 'certifications' | 'priority'>): SummaryList[] {
+  const lists: [keyof typeof form, string, SummaryList['layout']][] = [
+    ['projects', 'Proyek', 'bullets'], ['skills', 'Keahlian', 'inline'], ['languages', 'Bahasa', 'inline'],
+    ['certifications', 'Sertifikasi', 'bullets'], ['priority', 'Pilihan pelamar', 'inline'],
+  ]
+  return lists.filter(([key]) => form[key].length > 0).map(([key, label, layout]) => ({ label, items: form[key], layout }))
 }

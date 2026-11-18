@@ -1,3 +1,4 @@
+import { summaryLists } from './profile'
 import type { Application } from './tigTypes'
 
 export default function FormSummary({ form }: { form: Application }) {
@@ -10,8 +11,9 @@ export default function FormSummary({ form }: { form: Application }) {
       {form.experiences.map((row, index) => <li key={index}>{[row.title, row.organization, [row.start, row.end].filter(Boolean).join('–')].filter(Boolean).join(' · ')}
         {row.description && <p className="whitespace-pre-wrap text-slate-600">{row.description}</p>}</li>)}
     </ul></div>}
-    {([['projects', 'Proyek'], ['skills', 'Keahlian'], ['languages', 'Bahasa'], ['certifications', 'Sertifikasi'], ['priority', 'Pilihan pelamar']] as const)
-      .map(([key, label]) => form[key].length > 0 && <p key={key}><strong>{label}</strong> · {form[key].join(', ')}</p>)}
+    {summaryLists(form).map(({ label, items, layout }) => layout === 'bullets'
+      ? <div key={label}><strong>{label}</strong><ul className="list-disc pl-5">{items.map((item, index) => <li key={index} className="whitespace-pre-wrap">{item}</li>)}</ul></div>
+      : <p key={label}><strong>{label}</strong> · {items.join(', ')}</p>)}
     <p><strong>Preferensi kerja</strong> · {[
       form.preferences.domicile, form.preferences.work_modes.join(', '),
       form.preferences.expected_salary === null ? null : 'Rp ' + form.preferences.expected_salary.toLocaleString('id-ID'),

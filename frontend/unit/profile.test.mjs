@@ -25,3 +25,16 @@ test('latestExperience prefers a current job, then the latest end, then the firs
   assert.equal(latestExperience([]), null)
   assert.equal(latestExperience([{ title: '', organization: '', start: '', end: '', description: '' }]), null)
 })
+
+test('projects and certifications are listed one per bullet, short fields stay inline, empty lists are left out', async () => {
+  const { summaryLists } = await import('../.unit-build/profile.js')
+  const form = {
+    projects: ['Sistem Kasir — kasir restoran, struk, dan laporan harian', 'Landing Page — halaman promosi'],
+    skills: ['PHP', 'Go'], languages: [], certifications: ['BNSP Junior Web Programmer 2023'], priority: [],
+  }
+  assert.deepEqual(summaryLists(form), [
+    { label: 'Proyek', items: form.projects, layout: 'bullets' },
+    { label: 'Keahlian', items: ['PHP', 'Go'], layout: 'inline' },
+    { label: 'Sertifikasi', items: ['BNSP Junior Web Programmer 2023'], layout: 'bullets' },
+  ])
+})
