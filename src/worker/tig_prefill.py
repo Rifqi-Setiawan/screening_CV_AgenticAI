@@ -15,7 +15,7 @@ import pymupdf
 
 from src.domain.pii import EMAIL_REGEX, PHONE_REGEX
 from src.worker.anchor import resolve_candidate_name_consensus
-from src.worker.cv_text import parse_certifications, parse_experiences, parse_skills
+from src.worker.cv_text import parse_certifications, parse_experiences, parse_projects, parse_skills
 from src.worker.visibility import PdfLine, visible_pdf_lines
 
 WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -78,7 +78,6 @@ SECTION_ALIASES = {
         "relevant skills",
         "technical skills",
         "hard skills",
-        "soft skills",
         "core competencies",
         "competencies",
         "skills & others",
@@ -157,6 +156,15 @@ SECTION_ALIASES = {
         "penghargaan",
         "pencapaian",
     ],
+    "soft_skills": [
+        "soft skills",
+        "soft skill",
+        "interpersonal skills",
+        "non-technical skills",
+        "kemampuan non-teknis",
+        "kemampuan non teknis",
+        "keterampilan non-teknis",
+    ],
     "languages": ["languages", "language", "bahasa", "kemampuan bahasa"],
     "contact": [
         "contact",
@@ -196,6 +204,20 @@ SECTION_ALIASES = {
 for _label, _more in {
     "education": ["riwayat studi", "latar belakang akademik", "kualifikasi akademik", "academic qualifications", "studi"],
     "experience": ["riwayat kerja", "pengalaman bekerja"],
+    "skills": ["kemampuan teknis", "keterampilan teknis", "penguasaan alat atau software", "penguasaan alat", "technical skill"],
+    "certifications": [
+        "course & certifications",
+        "course & certification",
+        "courses & certifications",
+        "course and certifications",
+        "courses and certifications",
+        "training & certifications",
+        "certifications & courses",
+        "kursus & sertifikasi",
+        "pelatihan & sertifikasi",
+        "sertifikasi & pelatihan",
+        "sertifikasi & kursus",
+    ],
 }.items():
     SECTION_ALIASES[_label] = [*SECTION_ALIASES[_label], *(alias for alias in _more if alias not in SECTION_ALIASES[_label])]
 HEADINGS = {alias: label for label, aliases in SECTION_ALIASES.items() for alias in aliases}
@@ -229,6 +251,7 @@ SEGMENT_SPLIT = re.compile(r"\s*[|·]\s*|\s+[–—-]\s+|,\s+(?=(?:IPK|GPA)\b)",
 DATE_RANGE = re.compile(r"\(?\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|sekarang|present)\b\)?", re.I)
 GPA_PHRASE = re.compile(r"\(?\b(?:IPK|GPA)\s*[:=]?\s*[0-4](?:[.,]\d{1,3})?(?:\s*/\s*4(?:[.,]0+)?)?\)?", re.I)
 LONE_YEAR = re.compile(r"^\(?\s*(?:19|20)\d{2}\s*\)?$")
+TRAILING_LOCATION = re.compile(r"(?:\s*,\s*[^,|]+){0,3}\s*,\s*(?:Indonesia|ID)\s*$", re.I)
 DIRTY_CAMPUS = re.compile(r"[|·]|\s[–—-]\s|\b(?:IPK|GPA)\b|\b(?:19|20)\d{2}\b", re.I)
 
 
@@ -285,7 +308,11 @@ def refine_education(block: list[str], campus: str, major: str) -> tuple[str, st
                 tail = next((t for t in segments[index + 1:] if t != campus and degree_tail(t) is None and not CAMPUS.search(t)), "")
             major = tail or major
             break
-    return campus, major
+    if not major and re.match(r"SM[AK][NS]?(?=\b|\d)", campus):
+        # A school has no degree word: the line below its name is the track ("Rekayasa Perangkat Lunak", "IPA").
+        after = segments[segments.index(campus) + 1 :] if campus in segments else []
+        major = next((s for s in after if degree_tail(s) is None and not CAMPUS.search(s) and re.match(r"[^\W\d_]", s)), "")
+    return TRAILING_LOCATION.sub("", campus).strip(), major
 
 
 def display_date(date: dict | None) -> str:
@@ -402,9 +429,84 @@ def education_entries(lines: list[str]) -> list[dict]:
     return entries
 
 
+DESCRIBED_SECTIONS = {"projects", "experience", "training", "organizations"}
+# Zero-width characters, bidi marks, soft hyphens and private-use glyphs (Symbol/Wingdings bullets) carry no text.
+INVISIBLE = re.compile("[­​-‏⁠﻿-]")
+LOCATION_LABEL = re.compile(r"^\s*(?:domisili|kota|location|address|alamat)\s*:\s*(.+)$", re.I | re.M)
+EXPLICIT_LINK = re.compile(
+    r"(?:https?://|www\.)[^\s|,;]+|\b(?:[\w-]+\.)?(?:linkedin\.com/in|github\.com|gitlab\.com|behance\.net|dribbble\.com)/[^\s|,;]+",
+    re.I,
+)
+LABELLED_LINKS = (
+    (re.compile(r"\blinkedin\s*:\s*((?:https?://)?(?:www\.)?(?:linkedin\.com/)?(?:in/)?[\w%.-]+)", re.I), "https://linkedin.com/in/"),
+    (re.compile(r"\bgithub\s*:\s*((?:https?://)?(?:www\.)?(?:github\.com/)?[\w%.-]+)", re.I), "https://github.com/"),
+    (re.compile(r"\b(?:website|portfolio|portofolio|situs|blog)\s*:\s*((?:https?://)?[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}(?:/[^\s|,;]*)?)", re.I), "https://"),
+)
+
+
+def drop_repeated_page_header(lines: list[str]) -> list[str]:
+    """Multi-page CVs repeat the name block at the top of every page; keep the first copy only."""
+    if len(lines) < 8:
+        return lines
+    kept = lines[:1]
+    index = 1
+    while index < len(lines):
+        if index >= 4 and lines[index] == lines[0]:
+            cursor, offset = index + 1, 1
+            while cursor < len(lines) and offset < 6 and lines[cursor] == lines[offset]:
+                cursor, offset = cursor + 1, offset + 1
+            index = cursor
+            continue
+        kept.append(lines[index])
+        index += 1
+    return kept
+
+
+def contact_location(lines: list[str]) -> str:
+    """"Cibiru, Bandung 40615 • 0812 … • name@host": the place on a contact line, without the postal code."""
+    for line in lines[:6]:
+        if not (EMAIL_REGEX.search(line) or PHONE_REGEX.search(line)):
+            continue
+        for segment in re.split(r"\s*[•|·]\s*", line):
+            place = re.sub(r"\s+\d{5}\b.*$", "", segment.strip())
+            if re.fullmatch(r"[^\W\d_][\w .'-]*(?:\s*,\s*[^\W\d_][\w .'-]*)+", place):
+                return place
+    return ""
+
+
+def wrapped_header_location(lines: list[str]) -> str:
+    """"... |Bandung," on one line and "Indonesia" on the next."""
+    for first, second in zip(lines[:8], lines[1:9]):
+        if second.casefold() == "indonesia":
+            city = re.split(r"\s*\|\s*", first)[-1].strip(" ,")
+            if re.fullmatch(r"[^\W\d_][\w .'-]{1,38}", city):
+                return f"{city}, Indonesia"
+    return ""
+
+
+def extract_links(lines: list[str]) -> list[str]:
+    blob = "\n".join(lines)
+    found: list[str] = []
+
+    def add(url: str) -> None:
+        url = url.strip().rstrip(".,;|)")
+        if not re.match(r"https?://", url, re.I):
+            url = "https://" + url
+        if url.casefold() not in {known.casefold() for known in found}:
+            found.append(url)
+
+    for match in EXPLICIT_LINK.finditer(blob):
+        add(match[0])
+    for pattern, prefix in LABELLED_LINKS:
+        for match in pattern.finditer(blob):
+            value = match[1].removeprefix("in/") if prefix.endswith("/in/") else match[1]
+            add(value if re.match(r"(?:https?://|www\.|[\w-]+\.(?:com|net)/)", value, re.I) else prefix + value)
+    return found[:5]
+
+
 def prefill_form(content: bytes) -> dict:
     try:
-        text = cv_text(content).strip()[:40_000]
+        text = INVISIBLE.sub("", cv_text(content)).strip()[:40_000]
     except (
         RuntimeError,
         ValueError,
@@ -420,12 +522,12 @@ def prefill_form(content: bytes) -> dict:
 
     sections: dict[str, list[str]] = defaultdict(list)
     section = "header"
-    for raw_line in text.splitlines():
-        line = raw_line.strip(" \t•")
-        if not line:
-            continue
+    clean_lines = [raw.strip(" \t•●▪◦■") for raw in text.splitlines()]
+    for line in drop_repeated_page_header([line for line in clean_lines if line]):
         heading, separator, tail = line.partition(":")
         label = HEADINGS.get(heading.strip().casefold())
+        if label == "summary" and tail.strip() and section in DESCRIBED_SECTIONS:
+            label = None  # "Deskripsi: ..." inside a project or job is that entry's description, not a new section
         if label:
             section = label
             line = tail.strip() if separator else ""
@@ -450,16 +552,19 @@ def prefill_form(content: bytes) -> dict:
         header_name = named_line[1].strip() if named_line else None
     full_name = resolve_candidate_name_consensus(header_name, text, email=email[0] if email else None)
 
-    domicile = re.search(r"^\s*(?:domisili|kota|location)\s*:\s*(.+)$", text, re.I | re.M)
-    if not domicile:
-        domicile = next((match for line in contact_lines if (match := INDONESIAN_LOCATION.fullmatch(line))), None)
+    domicile = LOCATION_LABEL.search(text)
+    domicile_text = re.split(r"\s+\|\s+", domicile[1])[0].strip() if domicile else ""
+    if not domicile_text:
+        match = next((match for line in contact_lines if (match := INDONESIAN_LOCATION.fullmatch(line))), None)
+        head_lines = [line for line in clean_lines if line][:10]
+        domicile_text = match[1].strip() if match else contact_location(head_lines) or wrapped_header_location(head_lines)
     experience = parse_experiences("\n".join(sections["experience"]))[:20]
     return {
         "form": {
             "full_name": (full_name or "")[:160],
             "email": (email[0] if email else "")[:254],
             "phone": (phone[0].strip() if phone else "")[:32],
-            "preferences": {"domicile": domicile[1].strip()[:220] if domicile else ""},
+            "preferences": {"domicile": domicile_text[:220]},
             "education": education_entries(sections["education"]),
             "experiences": [
                 {
@@ -472,9 +577,10 @@ def prefill_form(content: bytes) -> dict:
                 for item in experience
             ],
             "skills": [item[:220] for item in parse_skills("\n".join(sections["skills"]))[:40]],
-            "languages": [item[:220] for item in parse_skills("\n".join(sections["languages"]))[:12]],
+            "languages": [item[:220] for item in parse_skills("\n".join(sections["languages"]), expand_parentheses=False)[:12]],
             "certifications": [item[:220] for item in parse_certifications("\n".join(sections["certifications"]))[:20]],
-            "projects": [item[:1800] for item in sections["projects"][:12]],
+            "projects": [item[:1800] for item in parse_projects("\n".join(sections["projects"]))[:12]],
+            "links": extract_links(sections["header"] + sections["contact"] + sections["personal_info"]),
         },
         "notice": "Isian yang terbaca sudah dimasukkan. Periksa dan koreksi sebelum mengirim.",
     }
