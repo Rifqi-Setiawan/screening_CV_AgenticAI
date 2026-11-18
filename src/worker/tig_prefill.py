@@ -192,6 +192,12 @@ SECTION_ALIASES = {
         "lain-lain",
     ],
 }
+# Extra headings seen in Indonesian and English CVs.
+for _label, _more in {
+    "education": ["riwayat studi", "latar belakang akademik", "kualifikasi akademik", "academic qualifications", "studi"],
+    "experience": ["riwayat kerja", "pengalaman bekerja"],
+}.items():
+    SECTION_ALIASES[_label] = [*SECTION_ALIASES[_label], *(alias for alias in _more if alias not in SECTION_ALIASES[_label])]
 HEADINGS = {alias: label for label, aliases in SECTION_ALIASES.items() for alias in aliases}
 DEGREES = (
     ("S3", r"\b(?:S[- ]?3|doktor|ph\.?d\.?)\b"),
@@ -202,7 +208,9 @@ DEGREES = (
     ("SMA/SMK", r"\b(?:SM[AK][NS]?(?=\b|\d)|high school)\b"),
 )
 CAMPUS = re.compile(
-    r"\b(?:universitas|university|institute|institut|politeknik|polytechnic|akademi|college|sekolah tinggi|UIN|ITB|UGM|UI|IPB|ITS)\b|\bSM[AK][NS]?(?=\b|\d)",
+    r"\b(?:universitas|university|institute|institut|politeknik|polytechnic|akademi|college|sekolah tinggi|UIN|ITB|UGM|UI|IPB|ITS|"
+    r"UB|UNPAD|UNDIP|UNAIR|UNS|UNY|UNJ|UNM|UNHAS|UNAND|UNSRI|UPI|UPN|UII|UMY|UMM|UMS|UAJY|UNPAR|UNTAR|UNIKOM|STMIK|STIE|"
+    r"STIKOM|STAN|PNJ|PENS|ITK|ITERA|BINUS|TELKOM|GUNADARMA|TRISAKTI)\b|\bSM[AK][NS]?(?=\b|\d)",
     re.I,
 )
 MAJOR = re.compile(
@@ -214,6 +222,78 @@ MAJOR = re.compile(
 EDUCATION_DATES = re.compile(r"(?:\s*[·|]\s*)?\(?\b(?:19|20)\d{2}\s*[-–—]\s*(?:19|20)\d{2}\)?\s*$")
 GPA = re.compile(r"\b(?:IPK|GPA)\s*[:=]?\s*([0-4](?:[.,]\d{1,3})?)", re.I)
 INDONESIAN_LOCATION = re.compile(r"^([\w -]{2,60}),\s*[\w .-]{2,60},\s*Indonesia$", re.I)
+
+
+# One-line education entries ("Campus | S1 Major | IPK 3.75 | 2018 - 2022") and degree phrases ("Bachelor of Science in X").
+SEGMENT_SPLIT = re.compile(r"\s*[|·]\s*|\s+[–—-]\s+|,\s+(?=(?:IPK|GPA)\b)", re.I)
+DATE_RANGE = re.compile(r"\(?\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|sekarang|present)\b\)?", re.I)
+GPA_PHRASE = re.compile(r"\(?\b(?:IPK|GPA)\s*[:=]?\s*[0-4](?:[.,]\d{1,3})?(?:\s*/\s*4(?:[.,]0+)?)?\)?", re.I)
+LONE_YEAR = re.compile(r"^\(?\s*(?:19|20)\d{2}\s*\)?$")
+DIRTY_CAMPUS = re.compile(r"[|·]|\s[–—-]\s|\b(?:IPK|GPA)\b|\b(?:19|20)\d{2}\b", re.I)
+
+
+def education_segments(block: list[str]) -> list[str]:
+    segments = []
+    for line in block:
+        for part in SEGMENT_SPLIT.split(line):
+            part = GPA_PHRASE.sub(" ", DATE_RANGE.sub(" ", part)).strip(" ,;·|()–—-")
+            if part and not LONE_YEAR.match(part):
+                segments.append(part)
+    return segments
+
+
+def degree_tail(segment: str) -> str | None:
+    """Major named after a degree ("S1 Hukum" -> "Hukum"); "" when only the degree is given; None when not a degree."""
+    text = segment.strip()
+    western = re.match(r"^(?:bachelor|master)(?:['’]s)?(?:\s+degree)?\b[\s:,–-]*", text, re.I)
+    if western:
+        rest = re.sub(r"^of\s+", "", text[western.end():], flags=re.I)
+        inner = re.match(
+            r"^(?:science|arts|engineering|applied science|business administration|laws?|education|technology|fine arts)\s+in\s+(.+)",
+            rest,
+            re.I,
+        )
+        return (inner[1] if inner else rest).strip(" ,;·-–")
+    local = re.match(r"^(?:S[- ]?[123]|D[- ]?[34]|diploma\s+(?:IV|III|4|3)|sarjana|magister|doktor|ph\.?d\.?|high school diploma)\b[\s:,–-]*", text, re.I)
+    if not local:
+        return None
+    rest = re.sub(r"^(?:S[- ]?[123]|D[- ]?[34]|sarjana|magister|master|diploma|doktor)\b[\s:,–-]*", "", text[local.end():], flags=re.I)
+    return rest.strip(" ,;·-–")
+
+
+def refine_education(block: list[str], campus: str, major: str) -> tuple[str, str]:
+    """Clean a campus that swallowed GPA/dates/separators and fill campus or major the line-based rules missed."""
+    segments = education_segments(block)
+    if not campus or DIRTY_CAMPUS.search(campus):
+        named = next((s for s in segments if CAMPUS.search(s) and degree_tail(s) is None), "")
+        if not named and not campus:
+            named = next(
+                (s for s in segments[:2] if degree_tail(s) is None and not MAJOR.search(s)
+                 and re.match(r"[^\W\d_]", s) and 2 <= len(s) <= 80),
+                "",
+            )
+        if named:
+            campus = named
+        elif campus:
+            campus = SEGMENT_SPLIT.split(campus)[0].strip(" ,;·|()–—-")
+    if not major or re.match(r"(?:science|arts|engineering)\s+in\s+", major, re.I):
+        for index, segment in enumerate(segments):
+            tail = degree_tail(segment)
+            if tail is None:
+                continue
+            if not tail:
+                tail = next((t for t in segments[index + 1:] if t != campus and degree_tail(t) is None and not CAMPUS.search(t)), "")
+            major = tail or major
+            break
+    return campus, major
+
+
+def display_date(date: dict | None) -> str:
+    """Keep YYYY-MM and "present" as parsed; a year-only date stays a year instead of an invented month."""
+    if not date:
+        return ""
+    value = date.get("value") or ""
+    return value[:4] if date.get("precision") == "year" else value
 
 
 def split_pdf_columns(lines: list[PdfLine], width: float) -> tuple[list[PdfLine], list[PdfLine]]:
@@ -310,6 +390,7 @@ def education_entries(lines: list[str]) -> list[dict]:
         major = education_major(block)
         gpa = GPA.search(combined)
         gpa_value = float(gpa[1].replace(",", ".")) if gpa else None
+        campus, major = refine_education(block, campus, major)
         entries.append(
             {
                 "level": level,
@@ -384,8 +465,8 @@ def prefill_form(content: bytes) -> dict:
                 {
                     "title": str(item.get("title") or "")[:220],
                     "organization": str(item.get("organization") or "")[:220],
-                    "start": (item.get("start", {}).get("value") or "")[:220],
-                    "end": (item.get("end", {}).get("value") or "")[:220],
+                    "start": display_date(item.get("start"))[:220],
+                    "end": display_date(item.get("end"))[:220],
                     "description": "\n".join(item.get("bullets", []))[:1800],
                 }
                 for item in experience

@@ -63,6 +63,44 @@ SNAPSHOT_DURATION = re.compile(
 )
 
 
+# Content cues decide which fragment is the job title and which is the employer; line order is only the tie-breaker.
+ORG_CUES = re.compile(
+    r"\b(?:pt|cv|ud|tbk|persero|bumn|inc|ltd|llc|corp|corporation|company|bank|universitas|university|institut|institute|"
+    r"politeknik|yayasan|kementerian|dinas|rumah sakit|rsud?|studio|group|grup|technologies|technology|teknologi|solutions?|"
+    r"solusi|systems|sistem|labs?|startup|perusahaan|agency|agensi|konsultan|foundation|school|sekolah|hospital|hotel|"
+    r"restoran|toko|pabrik|koperasi)\b",
+    re.I,
+)
+TITLE_CUES = re.compile(
+    r"\b(?:analyst|analis|engineer|insinyur|manager|manajer|developer|programmer|designer|desainer|architect|arsitek|"
+    r"administrator|admin|staff|staf|intern|magang|trainee|officer|specialist|spesialis|consultant|konsultan|coordinator|"
+    r"koordinator|supervisor|spv|kepala|head|lead|director|direktur|executive|asisten|assistant|teknisi|technician|"
+    r"akuntan|accountant|auditor|sales|marketing|secretary|sekretaris|operator|surveyor|mekanik|guru|dosen|perawat|"
+    r"apoteker|researcher|peneliti|scientist|editor|writer|penulis|freelancer?|associate|representative|agent|cashier|"
+    r"kasir|driver|pengemudi|recruiter|generalist|owner)\b",
+    re.I,
+)
+
+
+def order_title_org(first: str, second: str) -> tuple[str, str]:
+    """(title, organization) for two fragments. Content cues win; with no evidence the first fragment is the title."""
+    if not second:
+        return first, ""
+    straight = len(TITLE_CUES.findall(first)) + len(ORG_CUES.findall(second))
+    swapped = len(TITLE_CUES.findall(second)) + len(ORG_CUES.findall(first))
+    return (second, first) if swapped > straight else (first, second)
+
+
+def split_header(text: str, commas: bool = True) -> list[str]:
+    """Split "Title - Organisation", "Title at Organisation", "Title, Organisation" style headers (first pattern wins)."""
+    patterns = [r"\s*[—|]\s*", r"\s+[–-]\s+", r"\s+(?:at|di|pada|@)\s+"] + ([r"\s*,\s*"] if commas else [])
+    for pattern in patterns:
+        parts = [part.strip(" ,;·") for part in re.split(pattern, text, maxsplit=2) if part.strip(" ,;·")]
+        if len(parts) >= 2:
+            return parts
+    return [text.strip(" ,;·")]
+
+
 def norm_single_date(s: str, is_end: bool = False, ref_year: str = "") -> dict[str, Any]:
     s_clean = s.strip().lower()
     if any(p in s_clean for p in PRESENT_SET):
@@ -131,21 +169,22 @@ def parse_experiences(section_text: str) -> list[dict[str, Any]]:
 
         # Extract title and organization from pre_text or preceding lines
         if pre_text:
-            parts = re.split(r"[—|]", pre_text)
+            parts = split_header(pre_text)
             if len(parts) >= 2:
-                title = parts[0].strip()
-                org = parts[1].strip().split(",")[0].strip()
+                title, org = order_title_org(parts[0], parts[1])
+                org = org.split(",")[0].strip()
             else:
                 title = pre_text.strip()
         elif idx > 0:
             prev_line = lines[idx - 1].strip("(-|•— ")
-            parts = re.split(r"[—|]", prev_line)
+            parts = split_header(prev_line, commas=False)
             if len(parts) >= 2:
-                title = parts[0].strip()
-                org = parts[1].strip().split(",")[0].strip()
+                title, org = order_title_org(parts[0], parts[1])
+                org = org.split(",")[0].strip()
             else:
                 title = prev_line.strip()
                 org = lines[idx - 2].strip().split(",")[0].strip() if idx > 1 else ""
+                title, org = order_title_org(title, org)
                 title = re.sub(
                     r"^(?:interned\s+as\s+a|worked\s+as\s+an|worked\s+as\s+a|sebagai)\s+", "", title, flags=re.I
                 ).strip()
