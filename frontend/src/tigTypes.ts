@@ -26,6 +26,10 @@ export type Application = {
   certifications: string[]
   preferences: { expected_salary: number | null; domicile: string; work_modes: WorkMode[]; open_to_placement: boolean | null }
   priority: string[]
+  links: string[]
+  available_from: string
+  /** Set by the server when the application is submitted; older applications have none. */
+  consent_at?: string
 }
 
 export type PositionSummary = {
@@ -49,6 +53,7 @@ export const emptyRegular: Regular = {
 export const emptyApplication: Application = {
   full_name: '', email: '', phone: '', education: [], experiences: [], projects: [], skills: [], languages: [],
   certifications: [], preferences: { expected_salary: null, domicile: '', work_modes: [], open_to_placement: null }, priority: [],
+  links: [], available_from: '',
 }
 
 export type EvidenceStatus = 'found' | 'partial' | 'not_found'
@@ -89,7 +94,10 @@ export async function tigRequest<T>(url: string, options?: RequestInit): Promise
   if (!result.ok) {
     const data = await result.json().catch(() => null)
     const message = typeof data?.detail === 'string' ? data.detail
-      : Array.isArray(data?.detail) ? data.detail.map((item: { msg: string; loc: string[] }) => item.loc.slice(1).join('.') + ' — ' + item.msg).join('; ')
+      : Array.isArray(data?.detail) ? data.detail.map((item: { msg: string; loc: string[] }) => {
+          const field = item.loc.slice(1).join('.')
+          return (field ? field + ' — ' : '') + item.msg
+        }).join('; ')
         : 'Permintaan gagal (' + result.status + ').'
     throw new RequestError(message, result.status)
   }

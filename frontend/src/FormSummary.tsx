@@ -17,5 +17,10 @@ export default function FormSummary({ form }: { form: Application }) {
       form.preferences.expected_salary === null ? null : 'Rp ' + form.preferences.expected_salary.toLocaleString('id-ID'),
       form.preferences.open_to_placement === null ? null : form.preferences.open_to_placement ? 'Bersedia ditempatkan' : 'Tidak bersedia ditempatkan',
     ].filter(Boolean).join(' · ') || 'Belum diisi'}</p>
+    {form.available_from && <p><strong>Bisa mulai bekerja</strong> · {form.available_from}</p>}
+    {!!form.links?.length && <div><strong>Tautan</strong><ul className="list-disc pl-5">
+      {form.links.map((link, index) => <li key={index}><a className="break-all text-indigo-700 underline" href={link} target="_blank" rel="noopener noreferrer nofollow">{link}</a></li>)}
+    </ul></div>}
+    {form.consent_at && <p className="text-slate-600"><strong>Persetujuan data pribadi</strong> · {new Date(form.consent_at).toLocaleString('id-ID')}</p>}
   </div>
 }

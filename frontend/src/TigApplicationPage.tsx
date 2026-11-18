@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import './scoreDetail.css'
 import { Alert, Field, input, primary } from './TigFields'
 import FormSummary from './FormSummary'
+import ProfileCard from './ProfileCard'
 import { Donut, Gauge, MiniBars, StackedBar } from './ScoreCards'
 import { HistoryDetails, OptionsDetails, TraceDetails } from './TigExplain'
 import { categoryColor, evidenceStyle, scoreLabel, scoreStyles } from './tigApplication'
@@ -73,6 +74,8 @@ export default function TigApplicationPage({ jobTitle, applicationId, detail, ro
     </p>}
 
     <div className="sd-grid">
+      <ProfileCard form={detail.form} />
+
       <Card span={3} title="Skor akhir">
         <p className="sd-big">{result ? result.score : '—'}<span className="sd-unit"> /100</span></p>
         {result && <meter className="category-meter" min={0} max={100} value={result.score} aria-label={'Skor akhir ' + result.score + ' dari 100'}>{result.score}/100</meter>}
