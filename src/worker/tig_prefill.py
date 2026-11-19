@@ -226,7 +226,7 @@ DEGREES = (
     ("S2", r"\b(?:S[- ]?2|magister|master|mba)\b"),
     ("S1", r"\b(?:S[- ]?1|sarjana|bachelor)\b"),
     ("D4", r"\b(?:D[- ]?4|diploma (?:IV|4))\b"),
-    ("D3", r"\b(?:D[- ]?3|diploma (?:III|3))\b"),
+    ("D3", r"\b(?:D[- ]?3|diploma (?:III|3)|associate)\b"),
     ("SMA/SMK", r"\b(?:SM[AK][NS]?(?=\b|\d)|high school)\b"),
 )
 CAMPUS = re.compile(
@@ -268,9 +268,9 @@ def education_segments(block: list[str]) -> list[str]:
 def degree_tail(segment: str) -> str | None:
     """Major named after a degree ("S1 Hukum" -> "Hukum"); "" when only the degree is given; None when not a degree."""
     text = segment.strip()
-    western = re.match(r"^(?:bachelor|master)(?:['’]s)?(?:\s+degree)?\b[\s:,–-]*", text, re.I)
+    western = re.match(r"^(?:bachelor|master|associate)(?:['’]s)?(?:\s+degree)?\b[\s:,–-]*", text, re.I)
     if western:
-        rest = re.sub(r"^of\s+", "", text[western.end():], flags=re.I)
+        rest = re.sub(r"^(?:of|in)\s+", "", text[western.end():], flags=re.I)
         inner = re.match(
             r"^(?:science|arts|engineering|applied science|business administration|laws?|education|technology|fine arts)\s+in\s+(.+)",
             rest,
@@ -306,6 +306,18 @@ def refine_education(block: list[str], campus: str, major: str) -> tuple[str, st
                 continue
             if not tail:
                 tail = next((t for t in segments[index + 1:] if t != campus and degree_tail(t) is None and not CAMPUS.search(t)), "")
+            else:
+                following = segments[index + 1] if index + 1 < len(segments) else ""
+                if (
+                    following
+                    and following != campus
+                    and not CAMPUS.search(following)
+                    and degree_tail(following) is None
+                    and re.fullmatch(r"[A-Z][A-Za-z&/ -]{1,30}", following)
+                    and len(following.split()) <= 2
+                    and any(CAMPUS.search(s) for s in segments[index + 2 :])
+                ):
+                    tail = f"{tail} {following}"  # a major the PDF wrapped onto its own line ("... Informatics" / "Engineering")
             major = tail or major
             break
     if not major and re.match(r"SM[AK][NS]?(?=\b|\d)", campus):
@@ -323,17 +335,32 @@ def display_date(date: dict | None) -> str:
     return value[:4] if date.get("precision") == "year" else value
 
 
-def split_pdf_columns(lines: list[PdfLine], width: float) -> tuple[list[PdfLine], list[PdfLine]]:
+def column_boundary(lines: list[PdfLine], width: float) -> float | None:
+    """x that separates a left sidebar from the main column, or None for a single-column page."""
     # Restrict the split to layouts with separate, clearly labelled sidebar and body sections.
     headings = [(line, HEADINGS.get(line.text.rstrip(":").strip().casefold())) for line in lines]
-    main = [line.x for line, label in headings if label in {"summary", "experience", "education"}]
-    sidebar = [line.x for line, label in headings if label in {"contact", "skills", "languages", "certifications"}]
-    if not main or not sidebar or min(main) - min(sidebar) < max(60, width * 0.15):
+    main = [line.x for line, label in headings if label in {"experience", "education"}]
+    # Summary can sit in either column, so it counts as sidebar only when it is clearly left of the jobs.
+    sidebar_labels = {"contact", "skills", "languages", "certifications", "summary"}
+    sidebar = [
+        line.x for line, label in headings
+        if label in sidebar_labels and main and min(main) - line.x >= max(60, width * 0.15)
+    ]
+    if not main or not sidebar:
+        return None
+    return (min(main) + min(sidebar)) / 2
+
+
+def split_at(lines: list[PdfLine], boundary: float | None) -> tuple[list[PdfLine], list[PdfLine]]:
+    if boundary is None:
         return lines, []
-    boundary = (min(main) + min(sidebar)) / 2
     return [line for line in lines if line.x >= boundary], sorted(
         (line for line in lines if line.x < boundary), key=lambda line: (line.y, line.x)
     )
+
+
+def split_pdf_columns(lines: list[PdfLine], width: float) -> tuple[list[PdfLine], list[PdfLine]]:
+    return split_at(lines, column_boundary(lines, width))
 
 
 def word_text(content: bytes) -> str:
@@ -373,8 +400,12 @@ def cv_text(content: bytes) -> str:
                 return ""
             body: list[str] = []
             sidebars: list[str] = []
+            boundary = None
             for page in doc:
-                main, sidebar = split_pdf_columns(visible_pdf_lines(page), page.rect.width)
+                lines = visible_pdf_lines(page)
+                # A later page often has no sidebar heading of its own but keeps the same two columns.
+                boundary = column_boundary(lines, page.rect.width) or boundary
+                main, sidebar = split_at(lines, boundary)
                 body.extend(line.text for line in main)
                 sidebars.extend(line.text for line in sidebar)
         return "\n".join(body + sidebars)
@@ -402,7 +433,14 @@ def education_entries(lines: list[str]) -> list[dict]:
     blocks: list[list[str]] = []
     current: list[str] = []
     for line in lines:
-        if CAMPUS.search(line) and not MAJOR.search(line) and any(CAMPUS.search(prior) for prior in current):
+        new_campus = CAMPUS.search(line) and not MAJOR.search(line) and any(CAMPUS.search(prior) for prior in current)
+        # Degree-first layout: a second degree line starts the next entry once the current one has its campus and degree.
+        new_degree = (
+            degree_tail(line) is not None
+            and any(CAMPUS.search(prior) for prior in current)
+            and any(degree_tail(prior) is not None for prior in current)
+        )
+        if new_campus or new_degree:
             blocks.append(current)
             current = []
         current.append(line)
@@ -460,6 +498,11 @@ def drop_repeated_page_header(lines: list[str]) -> list[str]:
         kept.append(lines[index])
         index += 1
     return kept
+
+
+LABELLED_PHONE = re.compile(
+    r"^\s*(?:phone|telepon|telp|tel|hp|mobile|whatsapp|wa|no\.?\s*hp)\s*[:.]?\s*(\+?[\d(][\d()\s.-]{7,22}\d)", re.I | re.M
+)
 
 
 def contact_location(lines: list[str]) -> str:
@@ -526,6 +569,8 @@ def prefill_form(content: bytes) -> dict:
     for line in drop_repeated_page_header([line for line in clean_lines if line]):
         heading, separator, tail = line.partition(":")
         label = HEADINGS.get(heading.strip().casefold())
+        if label == "languages" and section == "languages" and not separator and heading.strip().casefold() == "language":
+            label = None  # "Indonesian - First" / "Language": the word wrapped onto its own line, not a new heading
         if label == "summary" and tail.strip() and section in DESCRIBED_SECTIONS:
             label = None  # "Deskripsi: ..." inside a project or job is that entry's description, not a new section
         if label:
@@ -539,6 +584,8 @@ def prefill_form(content: bytes) -> dict:
         text
     )
     phone = next((match for line in contact_lines if (match := PHONE_REGEX.search(line))), None)
+    labelled_phone = LABELLED_PHONE.search(text)
+    phone_text = phone[0].strip() if phone else (labelled_phone[1].strip() if labelled_phone else "")
     header_name = next(
         (
             line
@@ -563,7 +610,7 @@ def prefill_form(content: bytes) -> dict:
         "form": {
             "full_name": (full_name or "")[:160],
             "email": (email[0] if email else "")[:254],
-            "phone": (phone[0].strip() if phone else "")[:32],
+            "phone": phone_text[:32],
             "preferences": {"domicile": domicile_text[:220]},
             "education": education_entries(sections["education"]),
             "experiences": [

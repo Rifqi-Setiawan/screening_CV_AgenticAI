@@ -186,6 +186,19 @@ def header_below(lines: list[str], idx: int) -> tuple[str, str] | None:
     return title, clean_org(next((part for part in parts if ORG_CUES.search(part)), parts[0]))
 
 
+def org_below(lines: list[str], idx: int) -> str:
+    """"Title (dates)" followed by "Company - City, Region": the employer written under the title line."""
+    nxt = header_candidate(lines, idx + 1)
+    if not nxt:
+        return ""
+    parts = split_header(nxt, commas=False)
+    located = len(parts) >= 2 and ("," in nxt or bool(ORG_CUES.search(nxt)))
+    short_org = bool(ORG_CUES.search(nxt)) and len(nxt.split()) <= 5
+    if not (located or short_org):
+        return ""
+    return clean_org(next((part for part in parts if ORG_CUES.search(part)), parts[0]))
+
+
 def clean_org(text: str) -> str:
     """Employer without a trailing city or country ("PT Contoh - Bandung, Indonesia" -> "PT Contoh")."""
     return re.split(r"\s+[–-]\s+|,\s*", text.strip(), maxsplit=1)[0].strip()
@@ -253,6 +266,9 @@ def parse_experiences(section_text: str) -> list[dict[str, Any]]:
                 org = org.split(",")[0].strip()
             else:
                 title = pre_text.strip()
+                org = org_below(lines, idx)
+                if org:
+                    body_start = idx + 2
         else:
             above = header_above(lines, idx)
             below = None if above else header_below(lines, idx)
@@ -446,7 +462,8 @@ def logical_lines(section_text: str) -> list[str]:
         line = raw.strip().strip(BULLET_MARKS).strip()
         if not line:
             continue
-        if merged and (line[0].islower() or merged[-1].endswith((",", "&", "(", "-"))):
+        unclosed = bool(merged) and merged[-1].count("(") > merged[-1].count(")")
+        if merged and (line[0].islower() or merged[-1].endswith((",", "&", "(", "-")) or unclosed or line.startswith("&") or line.casefold() == "language"):
             merged[-1] = f"{merged[-1]} {line}"
         else:
             merged.append(line)
