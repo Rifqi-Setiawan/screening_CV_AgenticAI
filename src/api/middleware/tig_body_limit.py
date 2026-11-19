@@ -16,11 +16,11 @@ class TigBodyLimit:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
-        if scope["type"] != "http" or scope["method"] != "POST" or not path.startswith("/api/v1/tig/apply/"):
+        if scope["type"] != "http" or scope["method"] not in {"POST", "PUT"} or not path.startswith("/api/v1/tig/apply/"):
             await self.app(scope, receive, send)
             return
 
-        prefill = path.rstrip("/").endswith("/prefill")
+        prefill = path.rstrip("/").endswith(("/prefill", "/cv"))  # CV file uploads
         limit = (settings.MAX_UPLOAD_SIZE_MB * 1024 + 64 if prefill else 512) * 1024
         message = "Berkas CV terlalu besar." if prefill else "Formulir lamaran terlalu besar."
         length = Headers(scope=scope).get("content-length")

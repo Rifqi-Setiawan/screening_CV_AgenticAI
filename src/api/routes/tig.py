@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -183,6 +185,64 @@ async def submit(job_id: UUID, submission: ApplicationSubmission, applicant: App
     return {"application_id": application_id, "stage": "Seleksi"}
 
 
+CV_TYPES = (
+    (b"%PDF-", "application/pdf", ".pdf"),
+    (b"PK\x03\x04", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
+    (b"\xd0\xcf\x11\xe0", "application/msword", ".doc"),
+)
+
+
+def cv_type(content: bytes) -> tuple[str, str] | None:
+    """(content type, extension) from the file's own signature, never from the name or header the client sent."""
+    return next(((kind, ext) for magic, kind, ext in CV_TYPES if content.startswith(magic)), None)
+
+
+def clean_filename(name: str | None, extension: str) -> str:
+    base = re.split(r"[\\/]", name or "")[-1]
+    base = re.sub(r'[\x00-\x1f\x7f"<>|:*?]', "", base).strip(" .")[:120]
+    if not base.lower().endswith(extension):
+        base = (base.rsplit(".", 1)[0] if "." in base else base) or "cv"
+        base += extension
+    return base
+
+
+@router.put(public + "/cv", dependencies=[Depends(check_rate_limit(5))])
+async def upload_cv(
+    job_id: UUID,
+    response: Response,
+    file: UploadFile = File(...),
+    applicant: Applicant = Depends(get_current_applicant),
+):
+    """Keep the original file of the applicant's own application, encrypted; one file per application."""
+    response.headers["Cache-Control"] = "no-store"
+    key = encryption_key()
+    limit = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if (file.size is not None and file.size > limit) or len(content := await file.read(limit + 1)) > limit:
+        raise HTTPException(413, f"Ukuran CV maksimal {settings.MAX_UPLOAD_SIZE_MB} MB.")
+    kind = cv_type(content)
+    if not kind:
+        raise HTTPException(415, "Berkas harus berupa PDF atau Word (.doc, .docx).")
+    filename = clean_filename(file.filename, kind[1])
+    async with get_connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            "SELECT id FROM tig_applications WHERE job_id = %s AND applicant_id = %s", (job_id, applicant.id)
+        )
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(404, "Kirim lamaran untuk lowongan ini terlebih dahulu.")
+        await cur.execute(
+            """
+            INSERT INTO tig_application_cvs (application_id, filename, content_type, size_bytes, content)
+            VALUES (%s, %s, %s, %s, pgp_sym_encrypt_bytea(%s, %s))
+            ON CONFLICT (application_id) DO UPDATE
+            SET filename = EXCLUDED.filename, content_type = EXCLUDED.content_type,
+                size_bytes = EXCLUDED.size_bytes, content = EXCLUDED.content, created_at = now()
+            """,
+            (row["id"], filename, kind[0], len(content), content, key),
+        )
+    return {"filename": filename, "size_bytes": len(content), "content_type": kind[0]}
+
+
 @router.get(staff + "/config")
 async def get_config(job_id: UUID, user: User = Depends(get_current_user)):
     async with get_connection() as conn, conn.cursor() as cur:
@@ -271,15 +331,55 @@ async def application_detail(
         encrypted_row = await cur.fetchone()
         if not encrypted_row:
             raise HTTPException(404, "Lamaran tidak ditemukan.")
+        await cur.execute(
+            "SELECT filename, size_bytes, content_type FROM tig_application_cvs WHERE application_id = %s", (application_id,)
+        )
+        cv = await cur.fetchone()
         # Viewing the decrypted form is an identity access and is logged.
         await audit(cur, user, "TIG_APPLICATION_VIEW", "tig_application", application_id, {})
         return {
+            "cv": cv,
             **assessment_fields(row),
             "assessment": row["assessment"],
             "assessment_config": encrypted_row["assessment_config"],
             "assessment_history": encrypted_row["assessment_history"],
             "form": Application.model_validate_json(encrypted_row["form"]),
         }
+
+
+@router.get(staff + "/applications/{application_id}/cv")
+async def application_cv(
+    job_id: UUID,
+    application_id: UUID,
+    user: User = Depends(get_current_user),
+):
+    key = encryption_key()
+    async with get_connection() as conn, conn.cursor() as cur:
+        await get_job_for_tenant(cur, job_id, user.tenant_id)
+        await require_application(cur, job_id, application_id)
+        await cur.execute(
+            """
+            SELECT filename, content_type, pgp_sym_decrypt_bytea(content, %s) AS content
+            FROM tig_application_cvs WHERE application_id = %s
+            """,
+            (key, application_id),
+        )
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(404, "Pelamar tidak melampirkan CV.")
+        # Opening the original file is an identity access and is logged, like viewing the form.
+        await audit(cur, user, "TIG_CV_VIEW", "tig_application", application_id, {})
+    inline = row["content_type"] == "application/pdf"
+    return Response(
+        bytes(row["content"]),
+        media_type=row["content_type"],
+        headers={
+            "Content-Disposition": f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{quote(row['filename'])}",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox",
+        },
+    )
 
 
 @router.patch(staff + "/applications/{application_id}")
