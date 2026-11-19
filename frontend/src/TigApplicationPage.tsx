@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
+import { cvAction, cvCaption } from './cvFile'
 import './scoreDetail.css'
-import { Alert, Field, input, primary } from './TigFields'
+import { Alert, Field, input, primary, secondary } from './TigFields'
 import FormSummary from './FormSummary'
 import ProfileCard from './ProfileCard'
 import { Donut, Gauge, MiniBars, StackedBar } from './ScoreCards'
@@ -27,9 +28,10 @@ function Card({ span, title, id, aside, children }: { span: number; title: strin
   </section>
 }
 
-export default function TigApplicationPage({ jobTitle, applicationId, detail, rows, canEdit, busy, error, onStage, onRescore }: {
+export default function TigApplicationPage({ jobTitle, applicationId, detail, rows, canEdit, busy, error, onStage, onRescore, cvUrl, onOpenCv, onCloseCv }: {
   jobTitle: string; applicationId: string; detail: Detail | null; rows: Row[]; canEdit: boolean; busy: boolean; error: string
   onStage: (stage: Stage) => void; onRescore: () => void
+  cvUrl: string | null; onOpenCv: () => void; onCloseCv: () => void
 }) {
   const back = <a className="sd-back" href="#lamaran">← Kembali ke daftar lamaran</a>
   if (error) return <div className="sd-page">{back}<Alert>{error}</Alert></div>
@@ -189,8 +191,18 @@ export default function TigApplicationPage({ jobTitle, applicationId, detail, ro
         </div>)}</div>
       </Card>}
 
+      <Card span={12} title="CV asli pelamar" id="sd-cv">
+        {detail.cv ? <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="font-semibold">{cvCaption(detail.cv)}</p>
+            <p className="sd-sub">File yang diunggah pelamar, tersimpan terenkripsi. AI menilai dari isian formulir, bukan dari file ini.</p></div>
+          {cvUrl ? <button type="button" className={secondary} onClick={onCloseCv}>Tutup CV</button>
+            : <button type="button" className={primary} onClick={onOpenCv}>{cvAction(detail.cv.content_type) === 'open' ? 'Lihat CV asli' : 'Unduh CV asli'}</button>}
+        </div> : <p className="sd-sub">Pelamar tidak melampirkan file CV.</p>}
+        {cvUrl && <iframe src={cvUrl} title="CV asli pelamar" className="mt-4 h-[80vh] w-full rounded-lg border border-slate-200" />}
+      </Card>
+
       <Card span={6} title="Data formulir yang dikirim pelamar" id="sd-formulir">
-        <p className="sd-sub sd-lead">Isian asli pelamar · bukan pratinjau file CV</p>
+        <p className="sd-sub sd-lead">Isian yang diisi pelamar · dasar penilaian AI</p>
         <FormSummary form={detail.form} />
       </Card>
 

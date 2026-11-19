@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, box, Field, input, secondary, sectionTitle } from './TigFields'
 import TigConfigForm, { cleanConfig } from './TigConfigForm'
+import { cvAction } from './cvFile'
 import TigApplicationPage from './TigApplicationPage'
 import { detailHash } from './route'
 import { rowVersion, scoreLabel, scoreStyles } from './tigApplication'
@@ -99,6 +100,34 @@ export default function TigStaff({ jobId, title, token, view, applicationId }: {
     }
   }
 
+  // The file is behind the recruiter's bearer token, so it is fetched here: a PDF is shown inside the page from a blob URL
+  // (no pop-up to be blocked), a Word file is saved.
+  const [cvUrl, setCvUrl] = useState<string | null>(null)
+  const closeCv = useCallback(() => setCvUrl(previous => { if (previous) URL.revokeObjectURL(previous); return null }), [])
+  useEffect(() => closeCv, [selection, closeCv])
+  async function openCv() {
+    const cv = detail?.id === selection ? detail.cv : null
+    if (!cv) return
+    setError('')
+    try {
+      const response = await fetch(endpoint + '/applications/' + selection + '/cv', { headers, cache: 'no-store' })
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? 'CV tidak dapat dibuka (' + response.status + ').')
+      const url = URL.createObjectURL(await response.blob())
+      if (cvAction(cv.content_type) === 'open') {
+        closeCv()
+        setCvUrl(url)
+        return
+      }
+      const link = document.createElement('a')
+      link.href = url
+      link.download = cv.filename
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (error) {
+      setError((error as Error).message)
+    }
+  }
+
   const visible = (applications?.applications ?? [])
     .filter(row => filter === 'Semua' || row.category === filter)
     .sort((a, b) => sort === 'highest' ? (b.score ?? -1) - (a.score ?? -1)
@@ -114,7 +143,7 @@ export default function TigStaff({ jobId, title, token, view, applicationId }: {
       <TigApplicationPage jobTitle={title} applicationId={selection} detail={current} rows={rows} canEdit={Boolean(applications?.can_edit)} busy={busy}
         error={!current && detailFailure?.id === selection ? detailFailure.message : ''}
         onStage={stage => void changeApplication('', jsonOptions('PATCH', { stage }, headers))}
-        onRescore={() => void changeApplication('/rescore', { method: 'POST', headers })} />
+        onRescore={() => void changeApplication('/rescore', { method: 'POST', headers })} cvUrl={cvUrl} onOpenCv={() => void openCv()} onCloseCv={closeCv} />
     </section>
   }
 

@@ -1,4 +1,5 @@
 import type { Application, AssessmentResult, Category, EvidenceStatus, HistoryEntry, Stage } from './tigTypes'
+import type { CvInfo } from './cvFile.ts'
 
 export const evidenceStyle: Record<EvidenceStatus, [string, string]> = {
   found: ['bg-emerald-100 text-emerald-900', 'Ada di formulir'],
@@ -16,7 +17,7 @@ export type Row = {
   category: 'Belum dinilai' | 'Rendah' | 'Sedang' | 'Tinggi'; assessment_status: 'PENDING' | 'RUNNING' | 'FAILED' | 'DONE'
 }
 export type ListResponse = { applications: Row[]; can_edit: boolean }
-export type Detail = Row & { form: Application; assessment: AssessmentResult | null; assessment_history: HistoryEntry[] }
+export type Detail = Row & { form: Application; assessment: AssessmentResult | null; assessment_history: HistoryEntry[]; cv: CvInfo | null }
 
 export function scoreLabel(row: Row) {
   if (row.score !== null) return row.score + ' · ' + row.category

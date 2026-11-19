@@ -25,6 +25,9 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
   const [notice, setNotice] = useState('')
   const [filled, setFilled] = useState<string[]>([])
   const [cvDone, setCvDone] = useState(false)
+  const [cvFile, setCvFile] = useState<File | null>(null)
+  const [cvStored, setCvStored] = useState<'' | 'saved' | 'failed'>('')
+  const [cvProblem, setCvProblem] = useState('')
   const [working, setWorking] = useState(false)
   const [receipt, setReceipt] = useState('')
   const [consent, setConsent] = useState(false)
@@ -75,6 +78,21 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
     }
   }
 
+  // The original file is kept after the application exists, because it is stored against that application.
+  async function storeCv(file: File) {
+    setCvStored('')
+    setCvProblem('')
+    const body = new FormData()
+    body.append('file', file)
+    try {
+      await tigRequest(endpoint + '/cv', { method: 'PUT', body, headers: auth })
+      setCvStored('saved')
+    } catch (error) {
+      setCvStored('failed')
+      setCvProblem(error instanceof Error ? error.message : 'CV belum tersimpan.')
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
@@ -93,6 +111,7 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
       const result = await tigRequest<{ application_id: string }>(endpoint, jsonOptions('POST', prepared, auth))
       setReceipt(result.application_id)
       setForm(emptyApplication)
+      if (cvFile) await storeCv(cvFile)
     } catch (error) {
       failed(error, 'Lamaran belum terkirim.')
     } finally {
@@ -106,14 +125,22 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
     {receipt ? <section className={box} role="status">
       <h2 className={sectionTitle}>Lamaran terkirim</h2>
       <p>Tim rekrutmen akan meninjau lamaran Anda. Referensi lamaran <strong>{receipt}</strong>.</p>
+      {cvStored === 'saved' && <p className="mt-2 text-sm text-slate-700">CV asli Anda tersimpan dan dapat dibuka tim rekrutmen.</p>}
+      {cvStored === 'failed' && cvFile && <div role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p>Lamaran sudah terkirim, tetapi file CV belum tersimpan: {cvProblem}</p>
+        <button type="button" className={secondary + ' mt-2'} onClick={() => void storeCv(cvFile)}>Coba unggah CV lagi</button>
+      </div>}
       <a className={secondary + ' mt-4 inline-block'} href="/pelamar">Pantau status lamaran</a>
     </section> : job ? <form className="space-y-5" onSubmit={submit} noValidate>
       <section className={box}>
         <h2 className={sectionTitle}>Langkah 1 · Unggah CV untuk isi otomatis (opsional)</h2>
-        <p className="mb-3 text-sm text-slate-600">Unggah PDF atau Word. Sistem membaca teks CV dan mengisi kolom yang masih kosong. CV hasil scan atau gambar tidak terbaca, jadi isi formulir secara manual. File CV tidak disimpan.</p>
+        <p className="mb-3 text-sm text-slate-600">Unggah PDF atau Word. Sistem membaca teks CV dan mengisi kolom yang masih kosong. CV hasil scan atau gambar tidak terbaca, jadi isi formulir secara manual. File CV asli Anda disimpan terenkripsi dan hanya dapat dibuka oleh tim rekrutmen.</p>
         <Field label="Pilih CV"><input className={input} type="file" accept=".pdf,.doc,.docx" disabled={working} onChange={event => {
           const file = event.currentTarget.files?.[0]
-          if (file) void prefill(file)
+          if (file) {
+            setCvFile(file)
+            void prefill(file)
+          }
           event.currentTarget.value = ''
         }} /></Field>
         {working && !cvDone && <p role="status" className="mt-3 text-sm text-slate-600">Membaca CV…</p>}
@@ -224,7 +251,7 @@ export default function TigApplicant({ jobId, token, account, onAuthLost }: {
           <span><strong>(wajib)</strong> Saya menyetujui data pribadi saya diproses oleh tim rekrutmen untuk keperluan seleksi lowongan ini, sesuai Undang-Undang Pelindungan Data Pribadi, dan menyatakan bahwa data yang saya isi benar.</span>
         </label>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="max-w-xl text-sm text-slate-600">Saat dikirim, AI menilai kecocokan berdasarkan isian formulir ini, bukan file CV. Nama dan kontak digunakan untuk administrasi rekrutmen. Keputusan selanjutnya dibuat oleh tim rekrutmen.</p>
+          <p className="max-w-xl text-sm text-slate-600">Saat dikirim, AI menilai kecocokan berdasarkan isian formulir ini, bukan file CV; file CV yang Anda unggah ikut tersimpan untuk ditinjau tim rekrutmen. Nama dan kontak digunakan untuk administrasi rekrutmen. Keputusan selanjutnya dibuat oleh tim rekrutmen.</p>
           <button className={primary} disabled={working}>{working ? 'Memproses…' : 'Kirim lamaran'}</button>
         </div>
       </section>
